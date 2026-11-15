@@ -9,6 +9,7 @@ import { FileStatus } from './ui/FileStatus'
 import { FindBar } from './ui/FindBar'
 import { FormatMenu } from './ui/FormatMenu'
 import { PageMenu } from './ui/PageMenu'
+import { ExportMenu } from './ui/ExportMenu'
 import { headerFooter, printDocument } from './ui/pageActions'
 import { applyPageStyle } from './files/print'
 import { SheetMargin } from './ui/SheetMargins'
@@ -131,7 +132,8 @@ export default function App() {
     }
   }, [editor, session])
 
-  useEffect(() => {
+  // Attached in a layout effect, like the focus above: shortcuts work the moment the cursor shows.
+  useLayoutEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (document.querySelector('dialog[open]')) return
       syncSelection(editor)
@@ -207,6 +209,7 @@ export default function App() {
           <ImageMenu editor={editor} />
         </nav>
         <InstallButton />
+        <ExportMenu session={session} ask={ask} onClosed={() => editor.view.focus()} />
       </header>
       <Toolbar editor={editor} onLink={() => void editLink(editor, ask)} onFind={() => openFind(true)} />
       {find && (

@@ -271,3 +271,9 @@ body { background: var(--bg); }
   .doc .selectedCell::after, .doc [data-resize-handle], .ProseMirror-gapcursor { display: none; }
   .doc .ProseMirror-selectednode img, .doc img.ProseMirror-selectednode { outline: none; }
 }
+
+/* Export button, at the right end of the top bar (after Install, when that shows). */
+.export-menu { margin-left: auto; }
+.topbar-action ~ .export-menu { margin-left: 8px; }
+.export-menu > .tb-btn { gap: 6px; padding: 0 10px; font-size: 13px; border: 1px solid var(--line); }
+.export-menu .popover-panel { left: auto; right: 0; }

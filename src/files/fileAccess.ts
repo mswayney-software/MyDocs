@@ -1,6 +1,9 @@
 import { fileOpen, fileSave, supported, type FileWithHandle } from 'browser-fs-access'
 import { FILE_DESCRIPTION, FILE_EXTENSION, FILE_MIME } from './native'
 
+export const DOCX_EXTENSION = '.docx'
+export const DOCX_MIME = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
 /**
  * True where the browser can write back to the file it opened (Chrome, Edge).
  * Firefox and Safari fall back to opening with a file input and saving by download.
@@ -8,24 +11,33 @@ import { FILE_DESCRIPTION, FILE_EXTENSION, FILE_MIME } from './native'
 export const canWriteBack = supported
 
 const FILE_TYPES = { description: FILE_DESCRIPTION, extensions: [FILE_EXTENSION], mimeTypes: [FILE_MIME] }
+const WORD_TYPES = { description: 'Word document', extensions: [DOCX_EXTENSION], mimeTypes: [DOCX_MIME] }
+/** Open accepts our documents and Word documents (which open as a copy). */
+const OPEN_TYPES = {
+  description: 'Documents (Open Writer or Word)',
+  extensions: [FILE_EXTENSION, DOCX_EXTENSION],
+  mimeTypes: [FILE_MIME, DOCX_MIME],
+}
 
 export interface OpenedFile {
   name: string
-  text: string
+  file: File
   handle: FileSystemFileHandle | null
 }
+
+export const isWordFile = (name: string) => name.toLowerCase().endsWith(DOCX_EXTENSION)
 
 /** Show the open dialog. Resolves null if the user cancels. */
 export async function openFile(): Promise<OpenedFile | null> {
   let file: FileWithHandle | null
   try {
-    file = canWriteBack ? await fileOpen({ ...FILE_TYPES, id: 'documents' }) : await pickWithInput()
+    file = canWriteBack ? await fileOpen({ ...OPEN_TYPES, id: 'documents' }) : await pickWithInput()
   } catch (err) {
     if (isCancel(err)) return null
     throw err
   }
   if (!file) return null
-  return { name: file.name, text: await file.text(), handle: file.handle ?? null }
+  return { name: file.name, file, handle: file.handle ?? null }
 }
 
 /** How long a "cancel" waits for a "change" that follows it. */
@@ -40,7 +52,7 @@ function pickWithInput(): Promise<File | null> {
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
-    input.accept = [FILE_EXTENSION, FILE_MIME].join(',')
+    input.accept = [FILE_EXTENSION, FILE_MIME, DOCX_EXTENSION, DOCX_MIME].join(',')
     input.style.display = 'none'
     document.body.append(input)
     let settled = false
@@ -106,4 +118,18 @@ async function ensureWritePermission(handle: FileSystemFileHandle) {
 
 function isCancel(err: unknown) {
   return err instanceof DOMException && err.name === 'AbortError'
+}
+
+/**
+ * Save an exported file (Word). Never touches the open document's own file: in Chrome and
+ * Edge it shows the save dialog, elsewhere it downloads.
+ */
+export async function exportFile(blob: Blob, fileName: string): Promise<'written' | 'downloaded' | 'cancelled'> {
+  try {
+    const written = await fileSave(blob, { ...WORD_TYPES, fileName, id: 'exports' })
+    return written ? 'written' : 'downloaded'
+  } catch (err) {
+    if (isCancel(err)) return 'cancelled'
+    throw err
+  }
 }

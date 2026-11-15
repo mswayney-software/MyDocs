@@ -1,0 +1,147 @@
+[
+  {
+    "file": "01-snhu-mla.docx",
+    "style": "MLA",
+    "source": "Southern New Hampshire University",
+    "url": "https://media.screensteps.com/attachment_assets/assets/010/532/492/original/MLA%20Sample%20Paper%209th%20ed.docx",
+    "expect": {
+      "words": 1916,
+      "headings": 11,
+      "listItems": 3,
+      "tables": 2,
+      "cells": 77,
+      "images": 1
+    }
+  },
+  {
+    "file": "02-chabot-mla.docx",
+    "style": "MLA",
+    "source": "Chabot College",
+    "url": "https://www.chabotcollege.edu/academics/learning-connection/wrac/handouts/docs/WRAC_MLA%20Document%20Formatting_Sample.docx",
+    "expect": {
+      "words": 308,
+      "headings": 0,
+      "listItems": 0,
+      "tables": 0,
+      "cells": 0,
+      "images": 0,
+      "pageNumberPrefix": "Student’s last name"
+    }
+  },
+  {
+    "file": "03-scribbr-mla.docx",
+    "style": "MLA",
+    "source": "Scribbr",
+    "url": "https://www.scribbr.com/wp-content/uploads/2019/12/Scribbr-MLA-Format-Template-2.docx",
+    "expect": {
+      "words": 754,
+      "headings": 4,
+      "listItems": 1,
+      "tables": 1,
+      "cells": 20,
+      "images": 1,
+      "pageNumberPrefix": "Surname"
+    }
+  },
+  {
+    "file": "04-wcu-apa.docx",
+    "style": "APA",
+    "source": "West Coast University",
+    "url": "https://westcoastuniversity.edu/wp-content/uploads/2023/04/WCU_APA_Template.docx",
+    "expect": {
+      "words": 1287,
+      "headings": 3,
+      "listItems": 0,
+      "tables": 0,
+      "cells": 0,
+      "images": 0
+    }
+  },
+  {
+    "file": "05-und-apa.docx",
+    "style": "APA",
+    "source": "University of North Dakota",
+    "url": "https://und.edu/academics/writing-center/_files/docs/apa7-2025-read-only.docx",
+    "expect": {
+      "words": 1782,
+      "headings": 20,
+      "listItems": 16,
+      "tables": 1,
+      "cells": 12,
+      "images": 3
+    }
+  },
+  {
+    "file": "06-editage-apa.docx",
+    "style": "APA",
+    "source": "Editage",
+    "url": "https://www.editage.com/insights/wp-content/uploads/2026/05/APA7_Journal_Article_Template-1.docx",
+    "expect": {
+      "words": 587,
+      "headings": 0,
+      "listItems": 0,
+      "tables": 1,
+      "cells": 12,
+      "images": 0,
+      "header": "RUNNING HEAD"
+    }
+  },
+  {
+    "file": "07-serc-report.docx",
+    "style": "Report",
+    "source": "Carleton College SERC (CC BY-NC-SA)",
+    "url": "https://cdn.serc.carleton.edu/files/teaching_computation/workshop_2024/activities/report_template.docx",
+    "expect": {
+      "words": 495,
+      "headings": 1,
+      "listItems": 12,
+      "tables": 0,
+      "cells": 0,
+      "images": 1
+    }
+  },
+  {
+    "file": "08-utexas-chicago.docx",
+    "style": "Chicago",
+    "source": "UT Austin University Writing Center",
+    "url": "https://uwc.utexas.edu/wp-content/uploads/Chicago-Style_revised2020-1.docx",
+    "expect": {
+      "words": 797,
+      "headings": 5,
+      "listItems": 0,
+      "tables": 0,
+      "cells": 0,
+      "images": 2,
+      "note": "LibreOffice's HTML export counts 551 words: it leaves out a sample bibliography in a text box, which this import keeps"
+    }
+  },
+  {
+    "file": "09-csus-chicago.docx",
+    "style": "Chicago",
+    "source": "CSU Sacramento",
+    "url": "https://webpages.csus.edu/mattosc/STC/workshops/sample_files/word/Chicago%20Style%20Paper%20-%20Sample%20Text.docx",
+    "expect": {
+      "words": 1468,
+      "headings": 0,
+      "listItems": 0,
+      "tables": 0,
+      "cells": 0,
+      "images": 0
+    }
+  },
+  {
+    "file": "10-snhu-chicago.docx",
+    "style": "Chicago",
+    "source": "Southern New Hampshire University",
+    "url": "https://media.screensteps.com/attachment_assets/assets/010/306/477/original/Chicago%20Sample%20Paper%20.docx",
+    "expect": {
+      "words": 1315,
+      "headings": 0,
+      "listItems": 8,
+      "tables": 0,
+      "cells": 0,
+      "images": 0,
+      "note": "4 list items plus 4 footnotes, which come in as a numbered list at the end"
+    }
+  }
+]

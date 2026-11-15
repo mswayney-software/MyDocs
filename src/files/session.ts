@@ -5,7 +5,7 @@ import {
   appendHistory, deleteDocument, findRecoverable, HISTORY_INTERVAL_MS, holdLock, requestPersistentStorage,
   writeSnapshot,
 } from '../storage/autosave'
-import { canWriteBack, openFile, saveFile } from './fileAccess'
+import { canWriteBack, exportFile, isWordFile, openFile, saveFile, type OpenedFile } from './fileAccess'
 import type { Ask } from '../ui/dialogTypes'
 import { baseName, DEFAULT_PAGE, FILE_EXTENSION, OpenError, parse, safeFileName, serialize, type PageSettings } from './native'
 
@@ -277,7 +277,7 @@ export class DocumentSession {
     let file
     try {
       const f = await handle.getFile()
-      file = { name: f.name, text: await f.text(), handle }
+      file = { name: f.name, file: f, handle }
     } catch {
       await this.showError('Could not open the file', 'The file could not be read. It may have been moved or deleted.')
       return
@@ -285,10 +285,11 @@ export class DocumentSession {
     await this.loadFile(file)
   }
 
-  private async loadFile(file: { name: string; text: string; handle: FileSystemFileHandle | null }) {
+  private async loadFile(file: OpenedFile) {
+    if (isWordFile(file.name)) return this.loadWordFile(file)
     let parsed
     try {
-      parsed = parse(file.text, this.editor.schema)
+      parsed = parse(await file.file.text(), this.editor.schema)
     } catch (err) {
       const message = err instanceof OpenError ? err.message : 'The file could not be opened.'
       await this.showError(`Could not open "${file.name}"`, message)
@@ -296,14 +297,56 @@ export class DocumentSession {
     }
     const cleanup = this.detachCurrent()
     this.load({ doc: parsed.doc, page: parsed.page, fileName: baseName(file.name), handle: file.handle, saved: true })
-    await cleanup()
+    this.inBackground(cleanup)
+  }
+
+  /**
+   * A Word file opens as a new, unsaved document named after it. The original is only read:
+   * saving writes an Open Writer file, and "Save as Word file" exports a new .docx.
+   */
+  private async loadWordFile(file: OpenedFile) {
+    let imported
+    try {
+      const { importDocx } = await import('./docx-import')
+      imported = await importDocx(await file.file.arrayBuffer(), this.editor.schema)
+    } catch (err) {
+      const message = err instanceof OpenError ? err.message : 'This Word document could not be opened.'
+      await this.showError(`Could not open "${file.name}"`, message)
+      return
+    }
+    const cleanup = this.detachCurrent()
+    const name = file.name.replace(/\.docx$/i, '')
+    this.load({ doc: imported.doc, page: imported.page, fileName: name, handle: null, saved: false, hasFile: false })
+    this.notify(`Opened a copy of ${file.name}. Some formatting may not have carried over.`, 10000)
+    this.inBackground(cleanup)
+  }
+
+  // ---- export -------------------------------------------------------------------------
+
+  /** Save as Word file (.docx): a copy for Word or Google Docs. The open document is unchanged. */
+  exportWord(): Promise<void> {
+    return this.exclusive(() => this.doExportWord(), undefined)
+  }
+
+  private async doExportWord() {
+    const name = `${this.state.fileName}.docx`
+    try {
+      const { exportDocx } = await import('./docx-export')
+      const blob = await exportDocx(this.editor.getJSON(), this.state.page, this.state.fileName)
+      const result = await exportFile(blob, name)
+      if (result === 'written') this.notify('Saved a Word copy')
+      else if (result === 'downloaded') this.notify(`Downloaded ${name} to your Downloads folder.`, 8000)
+    } catch (err) {
+      console.error('Word export failed', err)
+      await this.showError('Could not save as Word file', 'Something went wrong while making the Word file. Your document is safe.')
+    }
   }
 
   private async doNewDocument(): Promise<void> {
     if (!(await this.confirmLeave())) return
     const cleanup = this.detachCurrent()
     this.load({ doc: { type: 'doc', content: [{ type: 'paragraph' }] }, page: structuredClone(DEFAULT_PAGE), fileName: UNTITLED, handle: null, saved: true, hasFile: false })
-    await cleanup()
+    this.inBackground(cleanup)
   }
 
   /** If there are unsaved changes, ask what to do. Resolves false to stay put. */
@@ -321,6 +364,14 @@ export class DocumentSession {
     })
     if (answer.value === 'save') return (await this.doSave()) && !this.state.dirty
     return answer.value === 'discard'
+  }
+
+  /**
+   * Storage cleanup after a swap runs on its own: the next file action (Ctrl+O right after
+   * New) must not wait for it, or be ignored because one is still "in progress".
+   */
+  private inBackground(task: () => Promise<void>) {
+    task().catch((err) => console.error('Cleanup failed', err))
   }
 
   /**

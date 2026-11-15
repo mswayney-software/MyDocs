@@ -8,6 +8,8 @@ const menu = async (page: Page, name: string, item: string) => {
 }
 
 test.beforeEach(async ({ page }) => {
+  // Intercept file pickers from the start: enabling it on the first wait races the key press.
+  page.on('filechooser', () => {})
   // Real save and open dialogs can't be automated: use the download and file-input path.
   await page.addInitScript(() => {
     delete (window as { showOpenFilePicker?: unknown }).showOpenFilePicker

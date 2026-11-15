@@ -50,6 +50,7 @@ export function FileMenu({ session, ask, onClosed }: { session: DocumentSession;
             <Item label="Save as…" shortcut="Mod+Shift+S" onSelect={pick(() => session.saveAs())} />
             <div className="menu-sep" role="separator" />
             <Item label="Print…" shortcut="Mod+P" onSelect={pick(() => printDocument(session, ask, { pdf: false }))} />
+            <Item label="Save as Word file (.docx)…" onSelect={pick(() => session.exportWord())} />
             <Item label="Save as PDF…" onSelect={pick(() => printDocument(session, ask, { pdf: true }))} />
           </>
         )
