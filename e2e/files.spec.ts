@@ -237,14 +237,14 @@ test.describe('save and open', () => {
     await open(page)
     await page.keyboard.type('Old draft')
     await page.getByRole('button', { name: 'File', exact: true }).click()
-    await page.getByRole('menuitem', { name: 'New' }).click()
+    await page.getByRole('menuitem', { name: 'New', exact: true }).click()
 
     const ask = page.getByRole('dialog', { name: 'Save changes to "Untitled document"?' })
     await ask.getByRole('button', { name: 'Cancel' }).click()
     await expect(doc(page)).toHaveText('Old draft')
 
     await page.getByRole('button', { name: 'File', exact: true }).click()
-    await page.getByRole('menuitem', { name: 'New' }).click()
+    await page.getByRole('menuitem', { name: 'New', exact: true }).click()
     await ask.getByRole('button', { name: 'Don’t save' }).click()
     await expect(doc(page)).toHaveText('')
     await expect(status(page)).toHaveText('')
@@ -257,7 +257,7 @@ test.describe('save and open', () => {
     await open(page)
     await page.keyboard.type('Draft to throw away')
     await page.getByRole('button', { name: 'File', exact: true }).click()
-    await page.getByRole('menuitem', { name: 'New' }).click()
+    await page.getByRole('menuitem', { name: 'New', exact: true }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Don’t save' }).click()
     await page.keyboard.press('ControlOrMeta+o') // immediately, while New is still finishing
     await expect(doc(page)).toHaveText('')

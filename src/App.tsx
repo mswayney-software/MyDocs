@@ -14,6 +14,8 @@ import { headerFooter, printDocument } from './ui/pageActions'
 import { applyPageStyle } from './files/print'
 import { SheetMargin } from './ui/SheetMargins'
 import { sheetStyle } from './ui/sheetStyle'
+import { ZoomControl } from './ui/ZoomControl'
+import { loadZoom, saveZoom } from './ui/zoom'
 import { ImageMenu, InsertMenu, TableMenu } from './ui/InsertMenus'
 import { editLink, insertImageFiles, syncSelection } from './ui/insertActions'
 import { Toolbar } from './ui/Toolbar'
@@ -98,6 +100,11 @@ export default function App() {
   const file = useSyncExternalStore(session.subscribe, session.getState)
   const [find, setFind] = useState<{ replace: boolean; token: number } | null>(null)
   const findOpen = useRef(false)
+  const [zoom, setZoom] = useState(loadZoom)
+  const changeZoom = (z: number) => {
+    setZoom(z)
+    saveZoom(z)
+  }
   useEffect(() => {
     findOpen.current = find !== null
   }, [find])
@@ -198,7 +205,9 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="topbar">
+      {/* One banner landmark for all the controls above the page. */}
+      <header className="chrome">
+      <div className="topbar">
         <FileStatus state={file} />
         <nav className="menubar" aria-label="Menus">
           <FileMenu session={session} ask={ask} onClosed={() => editor.view.focus()} />
@@ -210,11 +219,12 @@ export default function App() {
         </nav>
         <InstallButton />
         <ExportMenu session={session} ask={ask} onClosed={() => editor.view.focus()} />
-      </header>
+      </div>
       <Toolbar editor={editor} onLink={() => void editLink(editor, ask)} onFind={() => openFind(true)} />
       {find && (
         <FindBar editor={editor} replace={find.replace} focusToken={find.token} onClose={() => setFind(null)} />
       )}
+      </header>
       <main
         className="workspace"
         onMouseDown={(e) => {
@@ -225,7 +235,7 @@ export default function App() {
           }
         }}
       >
-        <div className="sheet" style={sheetStyle(file.page)}>
+        <div className="sheet" style={{ ...sheetStyle(file.page), zoom: zoom / 100 }}>
           <SheetMargin page={file.page} edge="top" onEdit={() => void headerFooter(session, ask)} />
           <EditorContent editor={editor} />
           <SheetMargin page={file.page} edge="bottom" onEdit={() => void headerFooter(session, ask)} />
@@ -236,7 +246,10 @@ export default function App() {
           <span>{APP_NAME}</span>
           <WordCount editor={editor} />
         </span>
-        <OfflineStatus />
+        <span className="status-end">
+          <OfflineStatus />
+          <ZoomControl zoom={zoom} onZoom={changeZoom} />
+        </span>
       </footer>
       {dialog}
     </div>

@@ -2,7 +2,7 @@
 
 A free, open source word processor for high school and college students that runs entirely on your device. No account, no sign-in, no telemetry. Your files stay on your computer.
 
-Status: M6 (Word files) done. Opens .docx as a new copy and saves as .docx. Headers, footers and page numbers print in Chrome and Edge 131+; Firefox and Safari print size and margins only (no CSS margin boxes yet). See the v1 spec for scope and milestones.
+Status: all v1 milestones (M0 to M7) done. MLA and APA templates, Word import and export, print and PDF, offline install. Headers, footers and page numbers print in Chrome and Edge 131+; Firefox and Safari print size and margins only (no CSS margin boxes yet). See the v1 spec for scope.
 
 ## Develop
 
@@ -11,7 +11,7 @@ npm install
 npx playwright install chromium firefox
 npm run dev        # local dev server
 npm test           # unit tests (Vitest)
-npm run test:e2e   # end-to-end tests (Playwright, Chromium + Firefox)
+npm run test:e2e   # end-to-end tests (Playwright, Chromium + Firefox), accessibility scan, 50-page typing speed
 npm run lint       # oxlint
 npm run typecheck  # tsc
 npm run licenses   # check dependency licenses, regenerate THIRD_PARTY_LICENSES.md
@@ -30,4 +30,4 @@ The Word import tests also run against ten real sample papers from university wr
 
 ## License
 
-MIT. Third-party licenses are listed in `THIRD_PARTY_LICENSES.md`. Allowed dependency licenses: MIT, BSD, Apache-2.0, ISC, SIL OFL, and Zlib (approved for pako, used by JSZip). Anything else is flagged before install.
+MIT. Third-party licenses are listed in `THIRD_PARTY_LICENSES.md`. Allowed dependency licenses: MIT, BSD, Apache-2.0, ISC, SIL OFL, and Zlib (approved for pako, used by JSZip). Anything else is flagged before install. One test-only exception: axe-core (MPL-2.0), the accessibility scanner, which never ships in the app.

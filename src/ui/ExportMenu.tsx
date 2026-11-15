@@ -5,7 +5,7 @@ import { MenuItem } from './MenuItem'
 import { printDocument } from './pageActions'
 import { Popover } from './Popover'
 
-/** The top bar's Export button: the document as a Word file or a PDF, in plain words. */
+/** The top bar's Export button: the document as a Word file, a PDF, or on paper. */
 export function ExportMenu({ session, ask, onClosed }: { session: DocumentSession; ask: Ask; onClosed: () => void }) {
   return (
     <Popover
@@ -33,6 +33,14 @@ export function ExportMenu({ session, ask, onClosed }: { session: DocumentSessio
             onSelect={() => {
               close()
               void printDocument(session, ask, { pdf: true })
+            }}
+          />
+          <MenuItem
+            label="Print…"
+            shortcut="Mod+P"
+            onSelect={() => {
+              close()
+              void printDocument(session, ask, { pdf: false })
             }}
           />
         </>

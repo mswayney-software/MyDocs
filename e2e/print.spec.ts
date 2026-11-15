@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
+import { pdfText } from './pdf-text'
 
 const doc = (page: Page) => page.getByRole('textbox', { name: 'Document' })
 const json = (page: Page) => page.evaluate(() => window.__openWriter!.getJSON())
 const menu = async (page: Page, name: string, item: string) => {
   await page.getByRole('button', { name, exact: true }).click()
-  await page.getByRole('menuitem', { name: item }).click()
+  await page.getByRole('menuitem', { name: item, exact: true }).click()
 }
 
 test.beforeEach(async ({ page }) => {
@@ -58,25 +59,6 @@ async function writeMlaPaper(page: Page) {
       ],
     }, { emitUpdate: true })
   }, LOREM)
-}
-
-interface Item { str: string; x: number; y: number; w: number; h: number }
-
-/** The text on each page of a PDF, with positions in points from the bottom left. */
-async function pdfText(pdf: Buffer) {
-  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs')
-  const file = await pdfjs.getDocument({ data: new Uint8Array(pdf), useSystemFonts: false, isEvalSupported: false }).promise
-  const pages: { width: number; height: number; items: Item[] }[] = []
-  for (let n = 1; n <= file.numPages; n++) {
-    const p = await file.getPage(n)
-    const [, , width, height] = p.view
-    const content = await p.getTextContent()
-    const items = content.items
-      .filter((i): i is typeof i & { str: string; transform: number[]; width: number; height: number } => 'str' in i && i.str.trim() !== '')
-      .map((i) => ({ str: i.str, x: i.transform[4], y: i.transform[5], w: i.width, h: i.height }))
-    pages.push({ width, height, items })
-  }
-  return pages
 }
 
 test('MLA paper prints with 1 inch margins and last name plus page number at the top right of every page', async ({ page, browserName }) => {

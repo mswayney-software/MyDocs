@@ -10,3 +10,8 @@ export function shortcutLabel(shortcut: string): string {
 export function tooltip(label: string, shortcut?: string): string {
   return shortcut ? `${label} (${shortcutLabel(shortcut)})` : label
 }
+
+/** The shortcut in aria-keyshortcuts form ("Control+Shift+S"), for screen readers. */
+export function ariaShortcut(shortcut: string): string {
+  return shortcut.replace(/Mod\+/g, isMac ? 'Meta+' : 'Control+')
+}

@@ -109,7 +109,7 @@ test('after the first load, the app starts and every feature works with the netw
   expect(path).toBeTruthy()
 
   await page.getByRole('button', { name: 'File', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'New' }).click()
+  await page.getByRole('menuitem', { name: 'New', exact: true }).click()
   await expect(d).toHaveText('')
 
   // Recovery works offline too: reload with unsaved text, restore it.
@@ -120,7 +120,7 @@ test('after the first load, the app starts and every feature works with the netw
   await expect(d).toHaveText('Backed up offline')
 
   await page.getByRole('button', { name: 'File', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'New' }).click()
+  await page.getByRole('menuitem', { name: 'New', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Don’t save' }).click()
   await expect(d).toHaveText('')
   const chooser = page.waitForEvent('filechooser')

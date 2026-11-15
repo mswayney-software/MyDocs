@@ -13,7 +13,8 @@ export function FileStatus({ state }: { state: SessionState }) {
     : undefined
   return (
     <div className="file-status">
-      <span className="file-name">{state.fileName}</span>
+      {/* The document's name is the page's main heading. */}
+      <h1 className="file-name">{state.fileName}</h1>
       {/* Announced to screen readers when it changes. */}
       <span className="file-state" role="status" aria-live="polite" title={hint}>
         {state.notice ?? status}

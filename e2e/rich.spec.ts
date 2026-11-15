@@ -4,7 +4,7 @@ const doc = (page: Page) => page.getByRole('textbox', { name: 'Document' })
 const json = (page: Page) => page.evaluate(() => window.__openWriter!.getJSON())
 const menu = async (page: Page, name: string, item: string) => {
   await page.getByRole('button', { name, exact: true }).click()
-  await page.getByRole('menuitem', { name: item }).or(page.getByRole('menuitemcheckbox', { name: item })).click()
+  await page.getByRole('menuitem', { name: item, exact: true }).or(page.getByRole('menuitemcheckbox', { name: item, exact: true })).click()
 }
 
 test.beforeEach(async ({ page }) => {

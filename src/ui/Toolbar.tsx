@@ -10,7 +10,7 @@ import {
   TEXT_COLORS,
 } from '../editor'
 import { setBlockStyle } from './blockStyle'
-import { tooltip } from './shortcuts'
+import { ariaShortcut, tooltip } from './shortcuts'
 import { SwatchPicker } from './SwatchPicker'
 import { BLOCK_FONT_SIZE, useFormatState, type Align, type BlockStyle } from './useFormatState'
 
@@ -32,6 +32,7 @@ function Btn({ label, shortcut, active, disabled, onClick, children }: BtnProps)
       className="tb-btn"
       aria-label={label}
       title={tooltip(label, shortcut)}
+      aria-keyshortcuts={shortcut ? ariaShortcut(shortcut) : undefined}
       aria-pressed={active}
       disabled={disabled}
       // Keep the editor's selection when clicking a button.
@@ -67,13 +68,17 @@ export function Toolbar({ editor, onLink, onFind }: { editor: Editor; onLink: ()
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Formatting">
+      {/* Groups wrap as a whole on narrow screens, never one button at a time. */}
+      <span className="tb-group">
       <Btn label="Undo" shortcut="Mod+Z" disabled={!s.canUndo} onClick={() => run().undo().run()}>
         <Undo2 {...ICON} />
       </Btn>
       <Btn label="Redo" shortcut="Mod+Y" disabled={!s.canRedo} onClick={() => run().redo().run()}>
         <Redo2 {...ICON} />
       </Btn>
-      <Sep />
+      </span>
+      <span className="tb-group">
+        <Sep />
 
       <select
         className="tb-select tb-style"
@@ -133,7 +138,9 @@ export function Toolbar({ editor, onLink, onFind }: { editor: Editor; onLink: ()
           </option>
         ))}
       </select>
-      <Sep />
+      </span>
+      <span className="tb-group">
+        <Sep />
 
       <Btn label="Bold" shortcut="Mod+B" active={s.bold} onClick={() => run().toggleBold().run()}>
         <Bold {...ICON} />
@@ -186,7 +193,9 @@ export function Toolbar({ editor, onLink, onFind }: { editor: Editor; onLink: ()
       <Btn label="Clear formatting" shortcut="Mod+Space" onClick={() => clearFormatting(editor)}>
         <RemoveFormatting {...ICON} />
       </Btn>
-      <Sep />
+      </span>
+      <span className="tb-group">
+        <Sep />
 
       {ALIGNS.map((a) => (
         <Btn
@@ -212,11 +221,13 @@ export function Toolbar({ editor, onLink, onFind }: { editor: Editor; onLink: ()
         {s.lineHeight == null && <option value="" hidden />}
         {[...new Set([...LINE_SPACINGS, s.lineHeight ?? DEFAULT_LINE_SPACING])].sort((a, b) => a - b).map((v) => (
           <option key={v} value={String(v)}>
-            {v} spacing
+            {v}
           </option>
         ))}
       </select>
-      <Sep />
+      </span>
+      <span className="tb-group">
+        <Sep />
 
       <Btn label="Bulleted list" shortcut="Mod+Shift+8" active={s.bulletList} onClick={() => run().toggleBulletList().run()}>
         <List {...ICON} />
@@ -238,13 +249,16 @@ export function Toolbar({ editor, onLink, onFind }: { editor: Editor; onLink: ()
       >
         <ListIndentIncrease {...ICON} />
       </Btn>
-      <Sep />
+      </span>
+      <span className="tb-group">
+        <Sep />
       <Btn label="Link" shortcut="Mod+K" active={s.link} onClick={onLink}>
         <Link {...ICON} />
       </Btn>
       <Btn label="Find and replace" shortcut="Mod+F" onClick={onFind}>
         <Search {...ICON} />
       </Btn>
+      </span>
     </div>
   )
 }

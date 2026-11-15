@@ -7,6 +7,7 @@ import {
 } from '../storage/autosave'
 import { canWriteBack, exportFile, isWordFile, openFile, saveFile, type OpenedFile } from './fileAccess'
 import type { Ask } from '../ui/dialogTypes'
+import type { TemplateDocument } from '../templates'
 import { baseName, DEFAULT_PAGE, FILE_EXTENSION, OpenError, parse, safeFileName, serialize, type PageSettings } from './native'
 
 /** Backups are written at most this long after a change, so a crash loses under 2 seconds. */
@@ -319,6 +320,39 @@ export class DocumentSession {
     this.load({ doc: imported.doc, page: imported.page, fileName: name, handle: null, saved: false, hasFile: false })
     this.notify(`Opened a copy of ${file.name}. Some formatting may not have carried over.`, 10000)
     this.inBackground(cleanup)
+  }
+
+  // ---- templates ----------------------------------------------------------------------
+
+  /** Start a new document from a template, with the cursor on the text to replace. */
+  newFromTemplate(made: TemplateDocument, fileName: string): Promise<void> {
+    return this.exclusive(() => this.doNewFromTemplate(made, fileName), undefined)
+  }
+
+  private async doNewFromTemplate(made: TemplateDocument, fileName: string) {
+    if (!(await this.confirmLeave())) return
+    const cleanup = this.detachCurrent()
+    // Like New: nothing to save until the student changes something.
+    this.load({ doc: made.doc, page: made.page, fileName: safeFileName(fileName), handle: null, saved: true, hasFile: false })
+    if (made.select) this.selectText(made.select)
+    this.inBackground(cleanup)
+  }
+
+  /** Select the first occurrence of some text, so typing replaces it. */
+  private selectText(text: string) {
+    const { state } = this.editor
+    let found: { from: number; to: number } | null = null
+    state.doc.descendants((node, pos) => {
+      if (found || !node.isText) return !found
+      const at = node.text!.indexOf(text)
+      if (at >= 0) found = { from: pos + at, to: pos + at + text.length }
+      return false
+    })
+    if (!found) return
+    const { from, to } = found
+    this.editor.view.dispatch(
+      state.tr.setSelection(TextSelection.create(state.doc, from, to)).scrollIntoView().setMeta('addToHistory', false),
+    )
   }
 
   // ---- export -------------------------------------------------------------------------

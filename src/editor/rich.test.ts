@@ -1,6 +1,6 @@
 import { Editor, getSchema, type JSONContent } from '@tiptap/core'
 import { parse, serialize, DEFAULT_PAGE } from '../files/native'
-import { countText } from './counts'
+import { countDoc, countText } from './counts'
 import { createExtensions } from './extensions'
 import { isEmbeddedImage } from './image'
 import { isSafeLink, normalizeLink } from './links'
@@ -170,5 +170,18 @@ describe('rich content round trip', () => {
     expect(make(reopened.doc).getJSON()).toEqual(json)
     // Also through HTML, the path pasting takes.
     expect(make(e.getHTML()).getJSON()).toEqual(json)
+  })
+})
+
+describe('word count in long documents', () => {
+  it('counts block by block and matches a count of the whole text', () => {
+    const e = make('<h1>Title here</h1><p>one two</p><ul><li><p>three</p></li><li><p>four five</p></li></ul><table><tr><td><p>six</p></td><td><p>seven</p></td></tr></table><p>eight</p>')
+    const d = e.state.doc
+    const whole = countText(d.textBetween(0, d.content.size, '\n', ' '))
+    expect(countDoc(d)).toEqual(whole)
+    expect(countDoc(d).words).toBe(10)
+    // After an edit, only the changed block is new; the total is still exact.
+    e.commands.insertContentAt(d.content.size - 1, ' nine')
+    expect(countDoc(e.state.doc).words).toBe(11)
   })
 })

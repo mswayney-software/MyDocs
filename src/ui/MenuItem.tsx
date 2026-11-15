@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react'
-import { shortcutLabel, tooltip } from './shortcuts'
+import { ariaShortcut, shortcutLabel, tooltip } from './shortcuts'
 
 interface MenuItemProps {
   label: string
@@ -19,12 +19,18 @@ export function MenuItem({ label, shortcut, checked, disabled, onSelect }: MenuI
       aria-checked={checked}
       disabled={disabled}
       title={tooltip(label, shortcut)}
+      aria-keyshortcuts={shortcut ? ariaShortcut(shortcut) : undefined}
       onMouseDown={(e) => e.preventDefault()}
       onClick={onSelect}
     >
       <span className="menu-check" aria-hidden="true">{checked && <Check size={14} />}</span>
       <span className="menu-label">{label}</span>
-      {shortcut && <span className="menu-shortcut">{shortcutLabel(shortcut)}</span>}
+      {/* Read out through aria-keyshortcuts, so the item's name is just its label. */}
+      {shortcut && (
+        <span className="menu-shortcut" aria-hidden="true">
+          {shortcutLabel(shortcut)}
+        </span>
+      )}
     </button>
   )
 }

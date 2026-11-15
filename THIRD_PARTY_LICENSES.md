@@ -121,6 +121,7 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 
 | Package | Version | License |
 | --- | --- | --- |
+| @axe-core/playwright | 4.10.2 | MPL-2.0 |
 | @playwright/test | 1.65.1 | Apache-2.0 |
 | @testing-library/jest-dom | 7.0.1 | MIT |
 | @testing-library/react | 16.3.3 | MIT |

@@ -12,6 +12,11 @@ const ALLOWED = [
 ]
 const isAllowedId = (id) => ALLOWED.some((re) => re.test(id.trim()))
 
+// Test-only tools approved one by one. They never ship in the app.
+const DEV_EXCEPTIONS = {
+  '@axe-core/playwright': 'MPL-2.0', // accessibility scanner for the e2e tests; approved by Troy 15 Nov 2026
+}
+
 // Minimal SPDX expression check: "A OR B" passes if any branch passes; "A AND B" if all do.
 function allowed(expr) {
   if (!expr) return false
@@ -47,7 +52,7 @@ const unique = rows
   .filter((r) => { const k = `${r.name}@${r.version}`; return seen.has(k) ? false : seen.add(k) })
   .sort((a, b) => Number(b.shipped) - Number(a.shipped) || a.name.localeCompare(b.name))
 
-const bad = unique.filter((r) => !allowed(r.license))
+const bad = unique.filter((r) => !allowed(r.license) && !(!r.shipped && DEV_EXCEPTIONS[r.name] === r.license))
 const table = (list) => ['| Package | Version | License |', '| --- | --- | --- |',
   ...list.map((r) => `| ${r.name} | ${r.version} | ${r.license} |`)].join('\n')
 

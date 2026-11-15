@@ -21,7 +21,8 @@ body { background: var(--bg); }
 
 .app { display: flex; flex-direction: column; height: 100%; }
 /* App chrome is controls, not text: never part of a text selection. */
-.topbar, .toolbar, .statusbar { user-select: none; -webkit-user-select: none; }
+.chrome, .statusbar { user-select: none; -webkit-user-select: none; }
+.chrome .findbar input { user-select: text; -webkit-user-select: text; }
 
 /* Top bar and menus */
 .topbar {
@@ -30,7 +31,7 @@ body { background: var(--bg); }
   padding: 4px 12px; font-size: 14px;
 }
 .file-status { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
-.file-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40ch; }
+.file-name { margin: 0; font-size: inherit; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40ch; }
 .file-state { color: var(--ink-soft); font-size: 13px; }
 
 /* Dialogs */
@@ -67,22 +68,22 @@ body { background: var(--bg); }
 }
 .tb-btn {
   display: inline-flex; align-items: center; justify-content: center;
-  height: 30px; min-width: 30px; padding: 0 4px;
+  height: 30px; min-width: 28px; padding: 0 3px;
   border: 0; border-radius: 4px; background: transparent; color: var(--ink);
   font: inherit; cursor: pointer;
 }
 .tb-btn:hover:not(:disabled) { background: var(--hover); }
 .tb-btn[aria-pressed='true'], .tb-btn[aria-expanded='true'] { background: var(--pressed); color: var(--pressed-ink); }
 .tb-btn:disabled { opacity: 0.35; cursor: default; }
-.tb-sep { width: 1px; height: 20px; margin: 0 4px; background: var(--line); }
+.tb-sep { width: 1px; height: 20px; margin: 0 3px; background: var(--line); }
 .tb-select {
   height: 30px; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px;
   background: var(--sheet); color: var(--ink); font: inherit; font-size: 13px;
 }
-.tb-style { width: 118px; }
-.tb-font { width: 186px; }
+.tb-style { width: 110px; }
+.tb-font { width: 170px; }
 .tb-size { width: 58px; }
-.tb-spacing { width: 104px; }
+.tb-spacing { width: 58px; }
 
 /* Popovers: menus and swatch pickers */
 .popover { position: relative; }
@@ -254,9 +255,9 @@ body { background: var(--bg); }
  */
 @media print {
   html, body, #root, .app { display: block; height: auto; background: #fff; }
-  .topbar, .toolbar, .findbar, .statusbar, .dlg, .popover-panel, .sheet-margin { display: none !important; }
+  .chrome, .statusbar, .dlg, .popover-panel, .sheet-margin { display: none !important; }
   .workspace { overflow: visible; padding: 0; }
-  .sheet { width: auto; max-width: none; min-height: 0; padding: 0; box-shadow: none; }
+  .sheet { width: auto; max-width: none; min-height: 0; padding: 0; box-shadow: none; zoom: 1 !important; }
   .doc { min-height: 0; caret-color: transparent; }
   .doc .page-break { break-after: page; height: 0; border: 0; margin: 0; }
   .doc .page-break::after { content: none; }
@@ -277,3 +278,17 @@ body { background: var(--bg); }
 .topbar-action ~ .export-menu { margin-left: 8px; }
 .export-menu > .tb-btn { gap: 6px; padding: 0 10px; font-size: 13px; border: 1px solid var(--line); }
 .export-menu .popover-panel { left: auto; right: 0; }
+
+/* Zoom, at the right of the status bar. */
+.status-end { display: inline-flex; align-items: center; gap: 16px; }
+.zoom { display: inline-flex; align-items: center; gap: 2px; }
+.zoom-btn, .zoom-value {
+  display: inline-flex; align-items: center; justify-content: center; height: 20px;
+  border: 0; border-radius: 3px; background: transparent; color: var(--ink); font: inherit; font-size: 12px; cursor: pointer;
+}
+.zoom-btn { width: 20px; }
+.zoom-value { min-width: 40px; }
+.zoom-btn:hover:not(:disabled), .zoom-value:hover { background: var(--hover); }
+.zoom-btn:disabled { opacity: 0.35; cursor: default; }
+
+.tb-group { display: inline-flex; align-items: center; gap: 2px; flex-wrap: nowrap; }
