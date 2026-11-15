@@ -94,6 +94,7 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 | @vitest/coverage-v8 | 5.1.0 | MIT |
 | jsdom | 31.0.1 | MIT |
 | oxlint | 1.93.0 | MIT |
+| pdfjs-dist | 4.10.38 | Apache-2.0 |
 | typescript | 7.0.2 | Apache-2.0 |
 | vite | 8.3.8 | MIT |
 | vite-plugin-pwa | 2.0.0 | MIT |

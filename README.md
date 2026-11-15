@@ -2,7 +2,7 @@
 
 A free, open source word processor for high school and college students that runs entirely on your device. No account, no sign-in, no telemetry. Your files stay on your computer.
 
-Status: M4 (rich content) done. See the v1 spec for scope and milestones.
+Status: M5 (page setup and print) done. Headers, footers and page numbers print in Chrome and Edge 131+; Firefox and Safari print size and margins only (no CSS margin boxes yet). See the v1 spec for scope and milestones.
 
 ## Develop
 

@@ -118,7 +118,11 @@ body { background: var(--bg); }
 /* Page */
 .workspace { flex: 1; overflow: auto; padding: 24px 16px 48px; cursor: text; }
 .sheet {
-  width: 8.5in; max-width: 100%; min-height: 11in; margin: 0 auto; padding: 1in;
+  /* Sized like the printed page from the document's page setup (see SheetMargins.tsx). */
+  --paper-w: 8.5in; --paper-h: 11in; --m-top: 1in; --m-right: 1in; --m-bottom: 1in; --m-left: 1in;
+  position: relative;
+  width: var(--paper-w); max-width: 100%; min-height: var(--paper-h); margin: 0 auto;
+  padding: var(--m-top) var(--m-right) var(--m-bottom) var(--m-left);
   background: var(--sheet); box-shadow: 0 1px 3px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(0 0 0 / 0.04);
 }
 .statusbar {
@@ -128,7 +132,7 @@ body { background: var(--bg); }
 
 /* Document content. Sizes here must match BLOCK_FONT_SIZE in useFormatState.ts. */
 .doc {
-  outline: none; min-height: 9in; color: #000;
+  outline: none; min-height: calc(var(--paper-h) - var(--m-top) - var(--m-bottom)); color: #000;
   font-family: 'Tinos', serif; font-size: 12pt; line-height: 1.15;
   tab-size: 0.5in; overflow-wrap: break-word;
 }
@@ -146,7 +150,7 @@ body { background: var(--bg); }
 .doc sup, .doc sub { font-size: 0.75em; line-height: 0; }
 
 @media (max-width: 900px) {
-  .sheet { padding: 0.6in; }
+  .sheet { padding-left: min(var(--m-left), 0.6in); padding-right: min(var(--m-right), 0.6in); }
 }
 
 /* Install button and status bar extras */
@@ -194,7 +198,7 @@ body { background: var(--bg); }
   padding: 0 8px; background: var(--sheet); color: #77776f; font: 11px system-ui, sans-serif;
 }
 .doc .page-break.ProseMirror-selectednode { border-top-color: var(--focus); }
-@media print { .doc .page-break { break-after: page; border: 0; margin: 0; } .doc .page-break::after { content: none; } }
+
 
 /* Find and replace */
 .doc .search-match { background: #ffe58f; }
@@ -220,3 +224,50 @@ body { background: var(--bg); }
 .dlg-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
 .menu-item:disabled { opacity: 0.4; cursor: default; }
 .menu-item:disabled:hover { background: transparent; }
+.dlg-fields { flex-direction: row; flex-wrap: wrap; column-gap: 12px; }
+.dlg-fields > * { flex: 1 1 100%; }
+.dlg-fields > .dlg-half { flex: 1 1 calc(50% - 6px); }
+.dlg-select { height: 32px; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); color: var(--ink); font: inherit; font-size: 14px; }
+.dlg-input-row input { min-width: 0; }
+
+/* Header and footer preview in the sheet's margins (screen only). */
+.sheet-margin {
+  position: absolute; left: var(--m-left); right: var(--m-right);
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px;
+  padding: 2px 4px; margin: 0 -4px; border: 1px dashed transparent; border-radius: 3px;
+  background: transparent; color: #6b6b66; cursor: pointer;
+  font-family: 'Tinos', serif; font-size: 12pt; line-height: 1.15; text-align: left;
+}
+.sheet-margin:hover { border-color: var(--line); }
+.sheet-margin-top { top: calc(var(--m-top) / 2); transform: translateY(-50%); }
+.sheet-margin-bottom { bottom: calc(var(--m-bottom) / 2); transform: translateY(50%); }
+.sheet-margin-cell { white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.sheet-margin-cell:nth-child(2) { text-align: center; }
+.sheet-margin-cell:nth-child(3) { text-align: right; }
+@media (max-width: 900px) {
+  .sheet-margin { left: min(var(--m-left), 0.6in); right: min(var(--m-right), 0.6in); }
+}
+
+/*
+ * Printing and Save as PDF. Paper size, margins, header, footer and page numbers come from
+ * the @page rule that files/print.ts generates. Here: print the document and nothing else.
+ */
+@media print {
+  html, body, #root, .app { display: block; height: auto; background: #fff; }
+  .topbar, .toolbar, .findbar, .statusbar, .dlg, .popover-panel, .sheet-margin { display: none !important; }
+  .workspace { overflow: visible; padding: 0; }
+  .sheet { width: auto; max-width: none; min-height: 0; padding: 0; box-shadow: none; }
+  .doc { min-height: 0; caret-color: transparent; }
+  .doc .page-break { break-after: page; height: 0; border: 0; margin: 0; }
+  .doc .page-break::after { content: none; }
+  .doc h1, .doc h2, .doc h3, .doc .doc-title { break-after: avoid; }
+  .doc p { orphans: 2; widows: 2; }
+  .doc tr, .doc [data-resize-container] { break-inside: avoid; }
+  .doc .tableWrapper { overflow: visible; }
+  .doc th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .doc mark, .doc span[style*='color'] { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Editing marks never print. */
+  .doc .search-match, .doc .search-current { background: none; }
+  .doc .selectedCell::after, .doc [data-resize-handle], .ProseMirror-gapcursor { display: none; }
+  .doc .ProseMirror-selectednode img, .doc img.ProseMirror-selectednode { outline: none; }
+}

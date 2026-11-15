@@ -8,7 +8,14 @@ export interface DialogField {
   key: string
   label: string
   value: string
-  type?: 'text' | 'number' | 'checkbox'
+  type?: 'text' | 'number' | 'checkbox' | 'select'
+  /** Choices for a select field. */
+  options?: { value: string; label: string }[]
+  /** Share a row with the next half-width field. */
+  half?: boolean
+  step?: number
+  /** Longest text allowed. */
+  maxLength?: number
   /** Text shown after the field, such as a file extension. */
   suffix?: string
   min?: number

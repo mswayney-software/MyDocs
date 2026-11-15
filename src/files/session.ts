@@ -23,6 +23,8 @@ export interface SessionState {
   hasFile: boolean
   /** A short message shown next to the file name, such as "Saved". */
   notice: string | null
+  /** Paper, margins, header, footer, and page numbers. */
+  page: PageSettings
 }
 
 const newId = () => crypto.randomUUID()
@@ -36,7 +38,8 @@ export class DocumentSession {
   private id: string = newId()
   private releaseLock: () => void = () => {}
   private handle: FileSystemFileHandle | null = null
-  private page: PageSettings = structuredClone(DEFAULT_PAGE)
+  /** Page settings as last saved to or opened from a file. */
+  private savedPage = JSON.stringify(DEFAULT_PAGE)
   /** Document as last saved to or opened from a file; null = never matches (unsaved new or recovered). */
   private savedDoc: PMNode | null
   private backupTimer: ReturnType<typeof setTimeout> | null = null
@@ -44,7 +47,13 @@ export class DocumentSession {
   private lastHistoryAt = 0
   private writing: Promise<void> = Promise.resolve()
   private askedForPersistence = false
-  private state: SessionState = { fileName: UNTITLED, dirty: false, hasFile: false, notice: null }
+  private state: SessionState = {
+    fileName: UNTITLED,
+    dirty: false,
+    hasFile: false,
+    notice: null,
+    page: structuredClone(DEFAULT_PAGE),
+  }
   private listeners = new Set<() => void>()
   private readonly editor: Editor
   private readonly ask: Ask
@@ -93,8 +102,16 @@ export class DocumentSession {
     document.removeEventListener('visibilitychange', this.onVisibility)
   }
 
+  private isDirty() {
+    return (
+      this.savedDoc === null ||
+      !this.editor.state.doc.eq(this.savedDoc) ||
+      JSON.stringify(this.state.page) !== this.savedPage
+    )
+  }
+
   private onUpdate = () => {
-    const dirty = this.savedDoc === null || !this.editor.state.doc.eq(this.savedDoc)
+    const dirty = this.isDirty()
     if (dirty !== this.state.dirty) this.setState({ dirty })
     if (!this.askedForPersistence) {
       this.askedForPersistence = true
@@ -153,7 +170,16 @@ export class DocumentSession {
   }
 
   private serialize() {
-    return serialize({ page: this.page, doc: this.editor.getJSON() })
+    return serialize({ page: this.state.page, doc: this.editor.getJSON() })
+  }
+
+  // ---- page settings ------------------------------------------------------------------
+
+  /** Change page settings. Counts as an unsaved change and is backed up like typing. */
+  setPage(page: PageSettings) {
+    if (JSON.stringify(page) === JSON.stringify(this.state.page)) return
+    this.setState({ page })
+    this.onUpdate()
   }
 
   // ---- file actions -------------------------------------------------------------------
@@ -213,9 +239,11 @@ export class DocumentSession {
 
   private async writeFile(handle: FileSystemFileHandle | null): Promise<boolean> {
     const doc = this.editor.state.doc
+    const page = JSON.stringify(this.state.page)
     const result = await saveFile(this.serialize(), this.state.fileName + FILE_EXTENSION, handle)
     if (result.kind === 'cancelled') return false
     this.savedDoc = doc
+    this.savedPage = page
     if (result.kind === 'written') {
       this.handle = result.handle
       this.setState({ fileName: baseName(result.name), hasFile: true })
@@ -225,7 +253,7 @@ export class DocumentSession {
       this.notify('Downloaded a copy to your Downloads folder. This browser cannot save over the original file.', 8000)
     }
     // Changes typed while the file was being written still count as unsaved.
-    this.setState({ dirty: !this.editor.state.doc.eq(doc) })
+    this.setState({ dirty: this.isDirty() })
     await this.backup()
     return true
   }
@@ -328,7 +356,7 @@ export class DocumentSession {
     this.releaseLock = holdLock(this.id)
     this.lastHistoryAt = 0
     this.handle = opts.handle
-    this.page = opts.page
+    this.savedPage = JSON.stringify(opts.page)
 
     // A fresh editor state: the undo history must not reach back into the previous document.
     const doc = PMNode.fromJSON(this.editor.schema, opts.doc)
@@ -344,6 +372,7 @@ export class DocumentSession {
       dirty: !opts.saved,
       hasFile: opts.hasFile ?? (opts.saved || opts.handle !== null),
       notice: null,
+      page: opts.page,
     })
     // Let the toolbar and everything else that listens to transactions catch up.
     this.editor.view.dispatch(this.editor.state.tr.setMeta('addToHistory', false))

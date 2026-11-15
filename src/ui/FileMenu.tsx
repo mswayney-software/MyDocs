@@ -1,5 +1,7 @@
 import { ChevronDown } from 'lucide-react'
 import type { DocumentSession } from '../files/session'
+import type { Ask } from './dialogTypes'
+import { printDocument } from './pageActions'
 import { Popover } from './Popover'
 import { shortcutLabel, tooltip } from './shortcuts'
 
@@ -20,7 +22,7 @@ function Item({ label, shortcut, onSelect }: { label: string; shortcut?: string;
   )
 }
 
-export function FileMenu({ session, onClosed }: { session: DocumentSession; onClosed: () => void }) {
+export function FileMenu({ session, ask, onClosed }: { session: DocumentSession; ask: Ask; onClosed: () => void }) {
   return (
     <Popover
       menu
@@ -46,6 +48,9 @@ export function FileMenu({ session, onClosed }: { session: DocumentSession; onCl
             <div className="menu-sep" role="separator" />
             <Item label="Save" shortcut="Mod+S" onSelect={pick(() => session.save())} />
             <Item label="Save as…" shortcut="Mod+Shift+S" onSelect={pick(() => session.saveAs())} />
+            <div className="menu-sep" role="separator" />
+            <Item label="Print…" shortcut="Mod+P" onSelect={pick(() => printDocument(session, ask, { pdf: false }))} />
+            <Item label="Save as PDF…" onSelect={pick(() => printDocument(session, ask, { pdf: true }))} />
           </>
         )
       }}

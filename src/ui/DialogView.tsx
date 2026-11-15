@@ -23,10 +23,10 @@ export function DialogView({ spec, onAnswer }: { spec: DialogSpec; onAnswer: (a:
     if (typeof d.showModal === 'function') {
       if (!d.open) d.showModal()
     } else d.setAttribute('open', '') // jsdom and very old browsers
-    const field = d.querySelector<HTMLInputElement>('input:not([type="checkbox"])')
+    const field = d.querySelector<HTMLInputElement | HTMLSelectElement>('input:not([type="checkbox"]), select')
     if (field) {
       field.focus()
-      field.select()
+      if (field instanceof HTMLInputElement) field.select()
     } else d.querySelector<HTMLButtonElement>('.dlg-primary')?.focus()
   }, [])
 
@@ -44,8 +44,10 @@ export function DialogView({ spec, onAnswer }: { spec: DialogSpec; onAnswer: (a:
         answer(spec.cancelValue)
       }}
     >
+      {/* noValidate: the code that asked clamps every value; a button that silently refuses helps no one. */}
       <form
         method="dialog"
+        noValidate
         onSubmit={(e) => {
           e.preventDefault()
           answer(primary)
@@ -78,6 +80,7 @@ export function DialogView({ spec, onAnswer }: { spec: DialogSpec; onAnswer: (a:
 }
 
 function Field({ field: f, value, onChange }: { field: DialogField; value: string; onChange: (v: string) => void }) {
+  const id = useId()
   if (f.type === 'checkbox') {
     return (
       <label className="dlg-check">
@@ -86,8 +89,23 @@ function Field({ field: f, value, onChange }: { field: DialogField; value: strin
       </label>
     )
   }
+  if (f.type === 'select') {
+    // Labeled by id, not by wrapping: a wrapped select's name would include every option.
+    return (
+      <div className={f.half ? 'dlg-field dlg-half' : 'dlg-field'}>
+        <label htmlFor={id}>{f.label}</label>
+        <select id={id} className="dlg-select" value={value} onChange={(e) => onChange(e.target.value)}>
+          {f.options?.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    )
+  }
   return (
-    <label className="dlg-field">
+    <label className={f.half ? 'dlg-field dlg-half' : 'dlg-field'}>
       <span>{f.label}</span>
       <span className="dlg-input-row">
         <input
@@ -95,6 +113,8 @@ function Field({ field: f, value, onChange }: { field: DialogField; value: strin
           value={value}
           min={f.min}
           max={f.max}
+          step={f.step}
+          maxLength={f.maxLength}
           placeholder={f.placeholder}
           spellCheck={false}
           onChange={(e) => onChange(e.target.value)}

@@ -15,24 +15,38 @@ export const FILE_MIME = 'application/vnd.open-writer+json'
 export const FILE_DESCRIPTION = 'Open Writer document'
 
 export type PaperSize = 'letter' | 'a4'
+export type Align = 'left' | 'center' | 'right'
+export type PageNumberPosition = 'none' | 'header-right' | 'footer-center' | 'footer-right'
 
-/** Page settings. Defined now so the v1 format is stable; the UI for them arrives in M5. */
+/** Page settings, applied when the document is printed, saved as PDF, or exported. */
 export interface PageSettings {
   paperSize: PaperSize
   /** Inches. */
   margins: { top: number; right: number; bottom: number; left: number }
+  /** Text printed at the top of every page. */
   header: string
+  headerAlign: Align
+  /** Text printed at the bottom of every page. */
   footer: string
-  pageNumbers: 'none' | 'header-right' | 'footer-center'
+  footerAlign: Align
+  pageNumbers: PageNumberPosition
+  /** Printed before the page number, such as the student's last name for MLA ("Smith 3"). */
+  pageNumberPrefix: string
   [key: string]: unknown
 }
+
+export const MIN_MARGIN = 0.25
+export const MAX_MARGIN = 3
 
 export const DEFAULT_PAGE: PageSettings = {
   paperSize: 'letter',
   margins: { top: 1, right: 1, bottom: 1, left: 1 },
   header: '',
+  headerAlign: 'left',
   footer: '',
+  footerAlign: 'center',
   pageNumbers: 'none',
+  pageNumberPrefix: '',
 }
 
 export interface NativeDocument {
@@ -109,25 +123,34 @@ function migrate(node: JSONContent): JSONContent {
 }
 
 /** Fill in defaults, keep unknown keys so a round trip never drops data. */
-function readPage(raw: unknown): PageSettings {
+export function readPage(raw: unknown): PageSettings {
   if (!isRecord(raw)) return structuredClone(DEFAULT_PAGE)
   const margins = isRecord(raw.margins) ? raw.margins : {}
-  const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d)
+  const margin = (v: unknown) =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.min(MAX_MARGIN, Math.max(MIN_MARGIN, v)) : 1
+  const text = (v: unknown) => (typeof v === 'string' ? oneLine(v) : '')
+  const align = (v: unknown, d: Align): Align => (v === 'left' || v === 'center' || v === 'right' ? v : d)
+  const numbers: PageNumberPosition[] = ['header-right', 'footer-center', 'footer-right']
   return {
     ...raw,
     paperSize: raw.paperSize === 'a4' ? 'a4' : 'letter',
     margins: {
-      top: num(margins.top, 1),
-      right: num(margins.right, 1),
-      bottom: num(margins.bottom, 1),
-      left: num(margins.left, 1),
+      top: margin(margins.top),
+      right: margin(margins.right),
+      bottom: margin(margins.bottom),
+      left: margin(margins.left),
     },
-    header: typeof raw.header === 'string' ? raw.header : '',
-    footer: typeof raw.footer === 'string' ? raw.footer : '',
-    pageNumbers:
-      raw.pageNumbers === 'header-right' || raw.pageNumbers === 'footer-center' ? raw.pageNumbers : 'none',
+    header: text(raw.header),
+    headerAlign: align(raw.headerAlign, 'left'),
+    footer: text(raw.footer),
+    footerAlign: align(raw.footerAlign, 'center'),
+    pageNumbers: numbers.find((n) => n === raw.pageNumbers) ?? 'none',
+    pageNumberPrefix: text(raw.pageNumberPrefix),
   }
 }
+
+/** Headers and footers are a single line. */
+export const oneLine = (s: string) => s.replace(/[\r\n\t]+/g, ' ').slice(0, 200)
 
 /** "Essay.owdoc" -> "Essay". */
 export function baseName(fileName: string): string {

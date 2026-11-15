@@ -8,6 +8,11 @@ import { FileMenu } from './ui/FileMenu'
 import { FileStatus } from './ui/FileStatus'
 import { FindBar } from './ui/FindBar'
 import { FormatMenu } from './ui/FormatMenu'
+import { PageMenu } from './ui/PageMenu'
+import { headerFooter, printDocument } from './ui/pageActions'
+import { applyPageStyle } from './files/print'
+import { SheetMargin } from './ui/SheetMargins'
+import { sheetStyle } from './ui/sheetStyle'
 import { ImageMenu, InsertMenu, TableMenu } from './ui/InsertMenus'
 import { editLink, insertImageFiles, syncSelection } from './ui/insertActions'
 import { Toolbar } from './ui/Toolbar'
@@ -102,6 +107,9 @@ export default function App() {
     editor.view.focus()
   }, [editor])
 
+  // The printed page: paper size, margins, header, footer, page numbers.
+  useEffect(() => applyPageStyle(file.page), [file.page])
+
   useEffect(() => {
     session.start()
     return () => session.dispose()
@@ -148,6 +156,12 @@ export default function App() {
         void (e.shiftKey ? session.saveAs() : session.save())
         return
       }
+      // Print through the app, so the student gets the Save as PDF tip and any warnings.
+      if (mod && !e.shiftKey && key === 'p') {
+        e.preventDefault()
+        void printDocument(session, ask, { pdf: false })
+        return
+      }
       if (mod && !e.shiftKey && key === 'o') {
         e.preventDefault()
         void session.open()
@@ -185,9 +199,10 @@ export default function App() {
       <header className="topbar">
         <FileStatus state={file} />
         <nav className="menubar" aria-label="Menus">
-          <FileMenu session={session} onClosed={() => editor.view.focus()} />
+          <FileMenu session={session} ask={ask} onClosed={() => editor.view.focus()} />
           <InsertMenu editor={editor} ask={ask} />
           <FormatMenu editor={editor} />
+          <PageMenu session={session} ask={ask} onClosed={() => editor.view.focus()} />
           <TableMenu editor={editor} />
           <ImageMenu editor={editor} />
         </nav>
@@ -207,8 +222,10 @@ export default function App() {
           }
         }}
       >
-        <div className="sheet">
+        <div className="sheet" style={sheetStyle(file.page)}>
+          <SheetMargin page={file.page} edge="top" onEdit={() => void headerFooter(session, ask)} />
           <EditorContent editor={editor} />
+          <SheetMargin page={file.page} edge="bottom" onEdit={() => void headerFooter(session, ask)} />
         </div>
       </main>
       <footer className="statusbar">
