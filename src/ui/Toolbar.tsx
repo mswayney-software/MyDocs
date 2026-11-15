@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import {
-  clearFormatting, DEFAULT_FONT, DEFAULT_LINE_SPACING, FONT_SIZES, FONTS, HIGHLIGHT_COLORS, LINE_SPACINGS,
+  clearFormatting, DEFAULT_FONT, DEFAULT_FONT_SIZE, DEFAULT_LINE_SPACING, FONT_SIZES, FONTS, HIGHLIGHT_COLORS, LINE_SPACINGS,
   TEXT_COLORS,
 } from '../editor'
 import { setBlockStyle } from './blockStyle'
@@ -78,9 +78,10 @@ export function Toolbar({ editor }: { editor: Editor }) {
         className="tb-select tb-style"
         aria-label="Paragraph style"
         title={tooltip('Paragraph style', 'Mod+Alt+0 to 3')}
-        value={s.block}
+        value={s.block ?? ''}
         onChange={(e) => setBlockStyle(editor, e.target.value as BlockStyle)}
       >
+        {s.block == null && <option value="" hidden />}
         {BLOCK_STYLES.map((b) => (
           <option key={b.value} value={b.value}>
             {b.label}
@@ -91,14 +92,15 @@ export function Toolbar({ editor }: { editor: Editor }) {
         className="tb-select tb-font"
         aria-label="Font"
         title="Font"
-        value={s.fontFamily}
-        style={{ fontFamily: s.fontFamily }}
+        value={s.fontFamily ?? ''}
+        style={{ fontFamily: s.fontFamily ?? undefined }}
         onChange={(e) =>
           e.target.value === DEFAULT_FONT
             ? run().unsetFontFamily().run()
             : run().setFontFamily(e.target.value).run()
         }
       >
+        {s.fontFamily == null && <option value="" hidden />}
         {FONTS.map((f) => (
           <option key={f} value={f} style={{ fontFamily: f }}>
             {f}
@@ -109,14 +111,18 @@ export function Toolbar({ editor }: { editor: Editor }) {
         className="tb-select tb-size"
         aria-label="Font size"
         title="Font size"
-        value={String(s.fontSize)}
+        value={s.fontSize == null ? '' : String(s.fontSize)}
         onChange={(e) => {
           const pt = Number(e.target.value)
-          return pt === BLOCK_FONT_SIZE[s.block] ? run().unsetFontSize().run() : run().setFontSize(`${pt}pt`).run()
+          // Back to the style's default size: remove the override rather than pin it.
+          return s.block && pt === BLOCK_FONT_SIZE[s.block]
+            ? run().unsetFontSize().run()
+            : run().setFontSize(`${pt}pt`).run()
         }}
       >
         {/* Keep an unusual size (from an imported file) selectable. */}
-        {[...new Set([...FONT_SIZES, s.fontSize])].sort((a, b) => a - b).map((pt) => (
+        {s.fontSize == null && <option value="" hidden />}
+        {[...new Set([...FONT_SIZES, s.fontSize ?? DEFAULT_FONT_SIZE])].sort((a, b) => a - b).map((pt) => (
           <option key={pt} value={String(pt)}>
             {pt}
           </option>
@@ -190,13 +196,14 @@ export function Toolbar({ editor }: { editor: Editor }) {
         className="tb-select tb-spacing"
         aria-label="Line spacing"
         title="Line spacing"
-        value={String(s.lineHeight)}
+        value={s.lineHeight == null ? '' : String(s.lineHeight)}
         onChange={(e) => {
           const v = Number(e.target.value)
           return run().setParagraphSpacing(v === DEFAULT_LINE_SPACING ? null : v).run()
         }}
       >
-        {[...new Set([...LINE_SPACINGS, s.lineHeight])].sort((a, b) => a - b).map((v) => (
+        {s.lineHeight == null && <option value="" hidden />}
+        {[...new Set([...LINE_SPACINGS, s.lineHeight ?? DEFAULT_LINE_SPACING])].sort((a, b) => a - b).map((v) => (
           <option key={v} value={String(v)}>
             {v} spacing
           </option>

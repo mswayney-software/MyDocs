@@ -18,6 +18,9 @@ export function createExtensions(): Extensions {
       codeBlock: false,
       horizontalRule: false,
       link: false,
+      // Word has no phantom empty line after a final heading, and Tiptap's version
+      // piled up blank lines each time a style was applied to the whole document.
+      trailingNode: false,
       undoRedo: { depth: 500 },
     }),
     Title,

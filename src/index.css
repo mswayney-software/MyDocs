@@ -24,6 +24,8 @@ body { background: var(--bg); }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
 
 .app { display: flex; flex-direction: column; height: 100%; }
+/* App chrome is controls, not text: never part of a text selection. */
+.topbar, .toolbar, .statusbar { user-select: none; -webkit-user-select: none; }
 
 /* Top bar and menus */
 .topbar {

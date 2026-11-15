@@ -89,3 +89,45 @@ test('Format menu applies a hanging indent, highlight applies a color, Escape cl
   await page.keyboard.press('Escape')
   await expect(page.getByRole('menu', { name: 'Format' })).toBeHidden()
 })
+
+test('Ctrl+A selects the document even when focus is on the toolbar', async ({ page }) => {
+  await page.goto('/')
+  await page.keyboard.type('Only the document gets selected.')
+  await page.getByRole('button', { name: 'Bold' }).focus()
+  await page.keyboard.press('ControlOrMeta+a')
+  await expect(doc(page)).toBeFocused()
+  const selected = await page.evaluate(() => {
+    const ed = window.__openWriter!
+    return { pm: ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to), dom: String(window.getSelection()) }
+  })
+  expect(selected.pm).toBe('Only the document gets selected.')
+  expect(selected.dom).not.toContain('Untitled document')
+})
+
+test('a selection mixing a heading and normal text shows a blank style and can go back to Normal', async ({ page }) => {
+  await page.goto('/')
+  await page.keyboard.type('Normal paragraph text.')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Heading text.')
+  await page.getByLabel('Paragraph style').selectOption('h2')
+  await expect(doc(page).locator('h2')).toHaveText('Heading text.')
+
+  // Select from the middle of the paragraph into the heading.
+  await page.evaluate(() => window.__openWriter!.commands.setTextSelection({ from: 5, to: 30 }))
+  await expect(page.getByLabel('Paragraph style')).toHaveValue('')
+  await page.getByLabel('Paragraph style').selectOption('paragraph')
+  await expect(doc(page).locator('h2')).toHaveCount(0)
+  await expect(doc(page).locator('p')).toHaveCount(2)
+})
+
+test('applying styles to the whole document does not pile up empty lines', async ({ page }) => {
+  await page.goto('/')
+  await page.keyboard.type('One.')
+  await page.keyboard.press('Enter')
+  await page.keyboard.type('Two.')
+  for (const style of ['h1', 'title', 'h2', 'paragraph']) {
+    await page.keyboard.press('ControlOrMeta+a')
+    await page.getByLabel('Paragraph style').selectOption(style)
+  }
+  await expect(doc(page).locator(':scope > *')).toHaveCount(2)
+})
