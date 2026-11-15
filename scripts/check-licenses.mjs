@@ -7,14 +7,14 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 const ALLOWED = [
   /^MIT$/, /^MIT-0$/, /^ISC$/, /^0BSD$/, /^BSD-[23]-Clause$/, /^Apache-2\.0$/,
   /^OFL-1\.1$/, /^BlueOak-1\.0\.0$/, /^CC0-1\.0$/, /^Python-2\.0$/,
-  // "BSD" with no clause count (older packages); Zlib approved by Troy for pako (15 Nov 2026).
+  // "BSD" with no clause count (older packages); Zlib approved by the maintainer for pako (15 Nov 2026).
   /^BSD$/, /^Zlib$/,
 ]
 const isAllowedId = (id) => ALLOWED.some((re) => re.test(id.trim()))
 
 // Test-only tools approved one by one. They never ship in the app.
 const DEV_EXCEPTIONS = {
-  '@axe-core/playwright': 'MPL-2.0', // accessibility scanner for the e2e tests; approved by Troy 15 Nov 2026
+  '@axe-core/playwright': 'MPL-2.0', // accessibility scanner for the e2e tests; approved by the maintainer 15 Nov 2026
 }
 
 // Minimal SPDX expression check: "A OR B" passes if any branch passes; "A AND B" if all do.
