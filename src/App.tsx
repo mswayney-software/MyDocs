@@ -38,6 +38,13 @@ export default function App() {
         'aria-multiline': 'true',
         spellcheck: 'true',
       },
+      // Every key acts on the real cursor: the browser reports cursor moves (Home, arrows)
+      // a moment late, and a key handled against a stale position can fall through to the
+      // browser's own editing, which can move text out of the document.
+      handleKeyDown: (view) => {
+        ;(view as unknown as { domObserver?: { flush?: () => void } }).domObserver?.flush?.()
+        return false
+      },
       handlePaste: (_view, event) => {
         const ed = editorRef.current
         const files = imageFiles(event.clipboardData?.files)

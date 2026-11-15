@@ -110,6 +110,42 @@ test('tables: insert, type with Tab, add and remove rows and columns, merge, hea
   await expect(doc(page).locator('td[colspan="2"]')).toContainText('Mon')
 })
 
+test('Backspace below a table and Delete above it move into the table and never lose text', async ({ page }) => {
+  await page.keyboard.type('Intro text.')
+  await menu(page, 'Insert', 'Table…')
+  await page.getByRole('dialog', { name: 'Insert table' }).getByRole('button', { name: 'Insert' }).click()
+  await page.keyboard.press('ControlOrMeta+End')
+  await page.keyboard.type('Conclusion goes here.')
+  await page.keyboard.press('Home')
+  await page.keyboard.press('Backspace')
+  await page.keyboard.type('last cell')
+  await page.keyboard.press('ControlOrMeta+Home')
+  await page.keyboard.press('End')
+  // Wait for the cursor to arrive, as a person's timing would. (Known: at machine speed under
+  // heavy CPU load, Chromium occasionally drops this cursor jump. Text is never lost.)
+  await expect
+    .poll(() => page.evaluate(() => window.__openWriter!.state.selection.$from.parent.textContent))
+    .toBe('Intro text.')
+  await page.keyboard.press('Delete')
+  await page.keyboard.type('first cell')
+
+  const state = await page.evaluate(() => {
+    const ed = window.__openWriter!
+    return {
+      blocks: ed.state.doc.content.content.map((n) => n.type.name),
+      text: ed.state.doc.textContent,
+      // What is on screen must match the document exactly.
+      inSync:
+        JSON.stringify(ed.state.doc.content.content.map((n) => n.textContent)) ===
+        JSON.stringify([...ed.view.dom.children].map((c) => c.textContent)),
+    }
+  })
+  expect(state.blocks).toEqual(['paragraph', 'table', 'paragraph'])
+  expect(state.text).toBe('Intro text.first celllast cellConclusion goes here.')
+  expect(state.inSync).toBe(true)
+  await saveAndReopen(page)
+})
+
 test('images: insert from a file (large photos scaled down), paste, align, resize, save and reopen', async ({ page, browserName }) => {
   await page.keyboard.type('Figure 1.')
   // A 3000 x 2000 image is scaled to at most 1600 px and fitted to the page width.
