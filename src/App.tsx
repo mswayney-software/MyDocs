@@ -4,6 +4,7 @@ import { createExtensions } from './editor'
 import { DocumentSession } from './files/session'
 import { useDialogs } from './ui/useDialogs'
 import { FileMenu } from './ui/FileMenu'
+import { InstallButton, OfflineStatus } from './ui/AppStatus'
 import { FileStatus } from './ui/FileStatus'
 import { FormatMenu } from './ui/FormatMenu'
 import { Toolbar } from './ui/Toolbar'
@@ -39,9 +40,21 @@ export default function App() {
     return () => session.dispose()
   }, [session])
 
+  // Installed app launched from a .owdoc in the file manager (Chrome, Edge).
   useEffect(() => {
-    if (import.meta.env.VITE_E2E) window.__openWriter = editor
-  }, [editor])
+    const queue = (window as unknown as { launchQueue?: LaunchQueue }).launchQueue
+    queue?.setConsumer((params) => {
+      const handle = params.files?.[0]
+      if (handle && handle.kind === 'file') void session.openLaunchedFile(handle as FileSystemFileHandle)
+    })
+  }, [session])
+
+  useEffect(() => {
+    if (import.meta.env.VITE_E2E) {
+      window.__openWriter = editor
+      window.__openWriterSession = session
+    }
+  }, [editor, session])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -84,9 +97,10 @@ export default function App() {
       <header className="topbar">
         <FileStatus state={file} />
         <nav className="menubar" aria-label="Menus">
-          <FileMenu session={session} />
+          <FileMenu session={session} onClosed={() => editor.view.focus()} />
           <FormatMenu editor={editor} />
         </nav>
+        <InstallButton />
       </header>
       <Toolbar editor={editor} />
       <main
@@ -105,6 +119,7 @@ export default function App() {
       </main>
       <footer className="statusbar">
         <span>{APP_NAME}</span>
+        <OfflineStatus />
       </footer>
       {dialog}
     </div>

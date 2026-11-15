@@ -2,7 +2,7 @@
 
 A free, open source word processor for high school and college students that runs entirely on your device. No account, no sign-in, no telemetry. Your files stay on your computer.
 
-Status: M2 (files and safety) done. See the v1 spec for scope and milestones.
+Status: M3 (offline) done. See the v1 spec for scope and milestones.
 
 ## Develop
 

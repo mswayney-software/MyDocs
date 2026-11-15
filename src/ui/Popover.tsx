@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 const ITEM_SELECTOR = '[role="menuitem"], [role="menuitemcheckbox"], [data-item]'
 
@@ -10,16 +10,31 @@ interface PopoverProps {
   /** Renders the panel as a menu (arrow keys move between items). */
   menu?: boolean
   className?: string
+  /**
+   * Called when the panel closes after an item was picked and focus would otherwise drop to
+   * the page body. Pass the editor's focus here so the next keystroke lands in the document.
+   */
+  onClosed?: () => void
   trigger: ReactNode
   children: (close: () => void) => ReactNode
 }
 
 /** A button that opens a small panel. Closes on outside click, Escape, or when an item calls close(). */
-export function Popover({ label, title, menu, className, trigger, children }: PopoverProps) {
+export function Popover({ label, title, menu, className, onClosed, trigger, children }: PopoverProps) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const button = useRef<HTMLButtonElement>(null)
   const panelId = useId()
+  const wasOpen = useRef(false)
+
+  // Runs right after the panel unmounts, before any key can be typed.
+  useLayoutEffect(() => {
+    if (wasOpen.current && !open) {
+      const active = document.activeElement
+      if (!active || active === document.body) onClosed?.()
+    }
+    wasOpen.current = open
+  }, [open, onClosed])
 
   useEffect(() => {
     if (!open) return

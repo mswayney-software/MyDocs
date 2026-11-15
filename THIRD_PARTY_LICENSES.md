@@ -11,6 +11,9 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 | @floating-ui/core | 1.8.0 | MIT |
 | @floating-ui/dom | 1.8.0 | MIT |
 | @floating-ui/utils | 0.2.12 | MIT |
+| @fontsource/arimo | 5.3.0 | OFL-1.1 |
+| @fontsource/carlito | 5.3.0 | OFL-1.1 |
+| @fontsource/tinos | 5.3.0 | OFL-1.1 |
 | @tiptap/core | 3.34.0 | MIT |
 | @tiptap/extension-blockquote | 3.34.0 | MIT |
 | @tiptap/extension-bold | 3.34.0 | MIT |
@@ -46,6 +49,7 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 | @tiptap/starter-kit | 3.34.0 | MIT |
 | @types/react | 19.3.0 | MIT |
 | @types/react-dom | 19.3.0 | MIT |
+| @types/trusted-types | 2.0.7 | MIT |
 | @types/use-sync-external-store | 0.0.6 | MIT |
 | browser-fs-access | 0.38.0 | Apache-2.0 |
 | csstype | 3.2.3 | MIT |
@@ -73,6 +77,8 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 | scheduler | 0.28.0 | MIT |
 | use-sync-external-store | 1.7.0 | MIT |
 | w3c-keyname | 2.2.8 | MIT |
+| workbox-core | 7.4.1 | MIT |
+| workbox-window | 7.4.1 | MIT |
 
 ## Development tools (not shipped)
 
@@ -88,4 +94,6 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 | oxlint | 1.93.0 | MIT |
 | typescript | 7.0.2 | Apache-2.0 |
 | vite | 8.3.8 | MIT |
+| vite-plugin-pwa | 2.0.0 | MIT |
 | vitest | 5.1.0 | MIT |
+| workbox-build | 7.4.1 | MIT |

@@ -42,6 +42,7 @@ export function FormatMenu({ editor }: { editor: Editor }) {
       menu
       label="Format"
       className="menubar-item"
+      onClosed={() => editor.view.focus()}
       trigger={
         <>
           Format <ChevronDown size={14} aria-hidden="true" />

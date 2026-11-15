@@ -1,5 +1,6 @@
 import type { JSONContent } from '@tiptap/core'
 import { Node as PMNode, type Schema } from '@tiptap/pm/model'
+import { canonicalFont } from '../editor/fonts'
 
 /**
  * Native file format: one JSON file holding a format version, page settings, and the
@@ -82,7 +83,21 @@ export function parse(text: string, schema: Schema): NativeDocument {
   } catch {
     throw new OpenError('damaged', 'This document is damaged and could not be opened.')
   }
-  return { page: readPage(data.page), doc: data.doc as JSONContent }
+  return { page: readPage(data.page), doc: migrateFonts(data.doc as JSONContent) }
+}
+
+/** Font names from before the fonts were bundled ("Liberation Serif") map to the bundled ones. */
+function migrateFonts(node: JSONContent): JSONContent {
+  const marks = node.marks?.map((m) =>
+    m.type === 'textStyle' && typeof m.attrs?.fontFamily === 'string'
+      ? { ...m, attrs: { ...m.attrs, fontFamily: canonicalFont(m.attrs.fontFamily) } }
+      : m,
+  )
+  return {
+    ...node,
+    ...(marks && { marks }),
+    ...(node.content && { content: node.content.map(migrateFonts) }),
+  }
 }
 
 /** Fill in defaults, keep unknown keys so a round trip never drops data. */

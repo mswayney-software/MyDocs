@@ -131,3 +131,20 @@ test('applying styles to the whole document does not pile up empty lines', async
   }
   await expect(doc(page).locator(':scope > *')).toHaveCount(2)
 })
+
+test('typing right after a color, highlight, or menu pick lands in the document', async ({ page }) => {
+  await page.goto('/')
+  await expect(doc(page)).toBeFocused()
+  await page.keyboard.type('Start')
+  await page.getByRole('button', { name: 'Text color' }).click()
+  await page.getByRole('button', { name: 'Red', exact: true }).click()
+  await page.keyboard.type(' red')
+  await page.getByRole('button', { name: 'Highlight', exact: true }).click()
+  await page.getByRole('button', { name: 'Yellow', exact: true }).click()
+  await page.keyboard.type(' marked')
+  await page.getByRole('button', { name: 'Format', exact: true }).click()
+  await page.getByRole('menuitemcheckbox', { name: 'Space after paragraph' }).click()
+  await page.keyboard.type(' spaced')
+  await expect(doc(page)).toHaveText('Start red marked spaced')
+  await expect(doc(page).locator('mark')).toHaveText(' marked spaced')
+})

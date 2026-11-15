@@ -63,6 +63,7 @@ const ALIGNS: { value: Align; label: string; shortcut: string; icon: ReactNode }
 export function Toolbar({ editor }: { editor: Editor }) {
   const s = useFormatState(editor)
   const run = () => editor.chain().focus()
+  const refocus = () => editor.view.focus()
 
   return (
     <div className="toolbar" role="toolbar" aria-label="Formatting">
@@ -102,10 +103,14 @@ export function Toolbar({ editor }: { editor: Editor }) {
       >
         {s.fontFamily == null && <option value="" hidden />}
         {FONTS.map((f) => (
-          <option key={f} value={f} style={{ fontFamily: f }}>
-            {f}
+          <option key={f.name} value={f.name} style={{ fontFamily: f.name }}>
+            {f.label}
           </option>
         ))}
+        {/* A font from a pasted or imported document that we don't bundle stays selectable. */}
+        {s.fontFamily && !FONTS.some((f) => f.name === s.fontFamily) && (
+          <option value={s.fontFamily}>{s.fontFamily}</option>
+        )}
       </select>
       <select
         className="tb-select tb-size"
@@ -165,6 +170,7 @@ export function Toolbar({ editor }: { editor: Editor }) {
         current={s.color}
         colors={TEXT_COLORS}
         noneLabel="Automatic"
+        onClosed={refocus}
         onPick={(c) => (c ? run().setColor(c).run() : run().unsetColor().run())}
       />
       <SwatchPicker
@@ -174,6 +180,7 @@ export function Toolbar({ editor }: { editor: Editor }) {
         current={s.highlight}
         colors={HIGHLIGHT_COLORS}
         noneLabel="No highlight"
+        onClosed={refocus}
         onPick={(c) => (c ? run().setHighlight({ color: c }).run() : run().unsetHighlight().run())}
       />
       <Btn label="Clear formatting" shortcut="Mod+Space" onClick={() => clearFormatting(editor)}>

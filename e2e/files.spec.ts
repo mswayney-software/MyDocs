@@ -252,6 +252,19 @@ test.describe('save and open', () => {
     await expect(doc(page)).toHaveText('')
   })
 
+  test('a file action started while another is finishing does not act on the old document', async ({ page }) => {
+    await withoutFileSystemAccess(page)
+    await open(page)
+    await page.keyboard.type('Draft to throw away')
+    await page.getByRole('button', { name: 'File', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'New' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Don’t save' }).click()
+    await page.keyboard.press('ControlOrMeta+o') // immediately, while New is still finishing
+    await expect(doc(page)).toHaveText('')
+    await page.waitForTimeout(500)
+    await expect(page.getByRole('dialog', { name: /Save changes/ })).toHaveCount(0)
+  })
+
   test('closing the tab with unsaved changes warns first', async ({ page }) => {
     await open(page)
     await page.keyboard.type('Unsaved words')

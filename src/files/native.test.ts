@@ -32,6 +32,19 @@ describe('native file format', () => {
     expect(parse(text, schema)).toEqual(sample)
   })
 
+  it('maps font names from before the fonts were bundled', () => {
+    const old = {
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [
+        { type: 'text', text: 'a', marks: [{ type: 'textStyle', attrs: { fontFamily: 'Liberation Sans', fontSize: null, color: null } }] },
+        { type: 'text', text: 'b', marks: [{ type: 'textStyle', attrs: { fontFamily: 'Liberation Serif', fontSize: null, color: null } }] },
+      ] }],
+    }
+    const text = JSON.stringify({ format: 'open-writer', version: 1, doc: old })
+    const fonts = parse(text, schema).doc.content![0].content!.map((t) => t.marks![0].attrs!.fontFamily)
+    expect(fonts).toEqual(['Arimo', 'Tinos'])
+  })
+
   it('keeps unknown page settings, so a round trip never drops data', () => {
     const text = JSON.stringify({ format: 'open-writer', version: 1, page: { futureThing: 7 }, doc: sample.doc })
     expect(parse(text, schema).page).toMatchObject({ futureThing: 7, paperSize: 'letter' })

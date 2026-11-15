@@ -11,13 +11,15 @@ interface SwatchPickerProps {
   /** Label of the "remove" choice, such as "Automatic" or "No highlight". */
   noneLabel: string
   onPick: (value: string | null) => void
+  onClosed?: () => void
 }
 
-export function SwatchPicker({ label, title, icon, current, colors, noneLabel, onPick }: SwatchPickerProps) {
+export function SwatchPicker({ label, title, icon, current, colors, noneLabel, onPick, onClosed }: SwatchPickerProps) {
   return (
     <Popover
       label={label}
       title={title}
+      onClosed={onClosed}
       trigger={
         <span className="swatch-trigger">
           {icon}

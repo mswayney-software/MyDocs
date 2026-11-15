@@ -1,6 +1,7 @@
 import type { AnyExtension, Extension } from '@tiptap/core'
 import Highlight from '@tiptap/extension-highlight'
 import { Color, FontFamily, FontSize } from '@tiptap/extension-text-style'
+import { canonicalFont } from './fonts'
 
 /** "rgb(192, 0, 0)" -> "#c00000". Anything else is returned lowercased and trimmed. */
 export function normalizeColor(value: string): string | null {
@@ -12,10 +13,11 @@ export function normalizeColor(value: string): string | null {
   return '#' + [m[1], m[2], m[3]].map((n) => Math.min(255, Number(n)).toString(16).padStart(2, '0')).join('')
 }
 
-/** Removes the quotes browsers add around family names: '"Liberation Sans"' -> 'Liberation Sans'. */
+/** '"Times New Roman", serif' -> 'Tinos': first family, unquoted, mapped to a bundled equivalent. */
 export function normalizeFontFamily(value: string): string | null {
-  const v = value.trim().replace(/^["']|["']$/g, '')
-  return v || null
+  // Pasted text often carries a stack ("Calibri, sans-serif"); the first family is the intended one.
+  const first = value.split(',')[0]?.trim().replace(/^["']|["']$/g, '') ?? ''
+  return first ? canonicalFont(first) : null
 }
 
 type Normalizer = (value: string) => string | null

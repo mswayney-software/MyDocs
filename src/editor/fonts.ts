@@ -1,6 +1,34 @@
-/** Bundled font set. Font files arrive in M3; until then index.css aliases them to local equivalents. */
-export const FONTS = ['Liberation Serif', 'Liberation Sans', 'Carlito'] as const
-export const DEFAULT_FONT = 'Liberation Serif'
+/**
+ * Bundled fonts (SIL OFL 1.1, from Fontsource; cached by the service worker for offline use).
+ * Each one has the same character widths as the font schools usually ask for, so line and
+ * page breaks match a paper written in that font.
+ */
+export const FONTS = [
+  { name: 'Tinos', label: 'Tinos (Times New Roman)' },
+  { name: 'Arimo', label: 'Arimo (Arial)' },
+  { name: 'Carlito', label: 'Carlito (Calibri)' },
+] as const
+export type FontName = (typeof FONTS)[number]['name']
+export const DEFAULT_FONT: FontName = 'Tinos'
+
+/**
+ * Names used before M3 (the spec's original Liberation fonts, which share Tinos and Arimo's
+ * design and widths), plus the fonts ours stand in for, so pasted text keeps its look.
+ */
+const FONT_ALIASES: Record<string, FontName> = {
+  'liberation serif': 'Tinos',
+  'times new roman': 'Tinos',
+  times: 'Tinos',
+  'liberation sans': 'Arimo',
+  arial: 'Arimo',
+  helvetica: 'Arimo',
+  calibri: 'Carlito',
+}
+
+/** Map a font name to a bundled font where there is an equivalent; anything else is kept as is. */
+export function canonicalFont(name: string): string {
+  return FONT_ALIASES[name.trim().toLowerCase()] ?? name.trim()
+}
 
 /** Points. */
 export const FONT_SIZES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 36, 48, 72] as const

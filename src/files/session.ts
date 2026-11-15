@@ -175,12 +175,41 @@ export class DocumentSession {
 
   // ---- file actions -------------------------------------------------------------------
 
-  async save(): Promise<boolean> {
-    if (!this.handle && !canWriteBack && !this.state.hasFile) return this.saveAs()
+  // File actions run one at a time. Each one awaits dialogs and storage, and a second action
+  // started in that gap (Ctrl+O right after "Don't save") would act on a half-replaced document.
+  private busy = false
+  private async exclusive<T>(fn: () => Promise<T>, idle: T): Promise<T> {
+    if (this.busy) return idle
+    this.busy = true
+    try {
+      return await fn()
+    } finally {
+      this.busy = false
+    }
+  }
+
+  save(): Promise<boolean> {
+    return this.exclusive(() => this.doSave(), false)
+  }
+  saveAs(): Promise<boolean> {
+    return this.exclusive(() => this.doSaveAs(), false)
+  }
+  open(): Promise<void> {
+    return this.exclusive(() => this.doOpen(), undefined)
+  }
+  openLaunchedFile(handle: FileSystemFileHandle): Promise<void> {
+    return this.exclusive(() => this.doOpenLaunchedFile(handle), undefined)
+  }
+  newDocument(): Promise<void> {
+    return this.exclusive(() => this.doNewDocument(), undefined)
+  }
+
+  private async doSave(): Promise<boolean> {
+    if (!this.handle && !canWriteBack && !this.state.hasFile) return this.doSaveAs()
     return this.writeFile(this.handle)
   }
 
-  async saveAs(): Promise<boolean> {
+  private async doSaveAs(): Promise<boolean> {
     if (!canWriteBack) {
       // No save dialog in this browser: ask for a name, then download.
       const answer = await this.ask({
@@ -218,7 +247,7 @@ export class DocumentSession {
     return true
   }
 
-  async open(): Promise<void> {
+  private async doOpen(): Promise<void> {
     if (!(await this.confirmLeave())) return
     let file
     try {
@@ -228,6 +257,24 @@ export class DocumentSession {
       return
     }
     if (!file) return
+    await this.loadFile(file)
+  }
+
+  /** Open a file the installed app was launched with (double-clicked in the file manager). */
+  private async doOpenLaunchedFile(handle: FileSystemFileHandle): Promise<void> {
+    if (!(await this.confirmLeave())) return
+    let file
+    try {
+      const f = await handle.getFile()
+      file = { name: f.name, text: await f.text(), handle }
+    } catch {
+      await this.showError('Could not open the file', 'The file could not be read. It may have been moved or deleted.')
+      return
+    }
+    await this.loadFile(file)
+  }
+
+  private async loadFile(file: { name: string; text: string; handle: FileSystemFileHandle | null }) {
     let parsed
     try {
       parsed = parse(file.text, this.editor.schema)
@@ -240,7 +287,7 @@ export class DocumentSession {
     this.load({ doc: parsed.doc, page: parsed.page, fileName: baseName(file.name), handle: file.handle, saved: true })
   }
 
-  async newDocument(): Promise<void> {
+  private async doNewDocument(): Promise<void> {
     if (!(await this.confirmLeave())) return
     await this.discardBackupIfUnsaved()
     this.load({ doc: { type: 'doc', content: [{ type: 'paragraph' }] }, page: structuredClone(DEFAULT_PAGE), fileName: UNTITLED, handle: null, saved: true, hasFile: false })
@@ -259,7 +306,7 @@ export class DocumentSession {
       ],
       cancelValue: 'cancel',
     })
-    if (answer.value === 'save') return (await this.save()) && !this.state.dirty
+    if (answer.value === 'save') return (await this.doSave()) && !this.state.dirty
     return answer.value === 'discard'
   }
 

@@ -41,7 +41,7 @@ function buildKitchenSink(): Editor {
   selectText(e, 'red'); e.commands.setColor('#c00000')
   selectText(e, 'mark'); e.commands.setHighlight({ color: '#00ffff' })
   selectText(e, 'big'); e.commands.setFontSize('18pt')
-  selectText(e, 'sans'); e.commands.setFontFamily('Liberation Sans')
+  selectText(e, 'sans'); e.commands.setFontFamily('Arimo')
   selectText(e, 'Body with')
   e.chain().setTextAlign('justify').setParagraphSpacing(2).setSpaceBefore(12).setSpaceAfter(6).toggleFirstLineIndent().run()
   selectText(e, 'Second paragraph')
@@ -64,7 +64,7 @@ describe('document model', () => {
     for (const expected of [
       '"type":"title"', '"level":1', '"type":"bold"', '"type":"italic"', '"type":"underline"',
       '"type":"strike"', '"type":"superscript"', '"type":"subscript"', '"color":"#c00000"',
-      '"type":"highlight"', '"fontSize":"18pt"', '"fontFamily":"Liberation Sans"',
+      '"type":"highlight"', '"fontSize":"18pt"', '"fontFamily":"Arimo"',
       '"textAlign":"justify"', '"lineHeight":2', '"spaceBefore":12', '"spaceAfter":6',
       '"firstLine":0.5', '"firstLine":-0.5', '"type":"blockquote"', '"type":"bulletList"',
       '"type":"orderedList"',
@@ -118,10 +118,13 @@ describe('paragraph formatting', () => {
   })
 
   it('normalizes colors and fonts read from pasted HTML', () => {
-    const e = make('<p><span style="color: rgb(192, 0, 0); font-family: &quot;Liberation Sans&quot;">a</span><mark style="background-color: rgb(255, 255, 0)">b</mark></p>')
-    const [a, b] = e.getJSON().content![0].content!
-    expect(a.marks![0].attrs).toEqual({ color: '#c00000', fontFamily: 'Liberation Sans', fontSize: null })
+    const e = make('<p><span style="color: rgb(192, 0, 0); font-family: &quot;Times New Roman&quot;, serif">a</span><mark style="background-color: rgb(255, 255, 0)">b</mark><span style="font-family: Calibri">c</span><span style="font-family: Comic Sans MS">d</span></p>')
+    const [a, b, c, d] = e.getJSON().content![0].content!
+    expect(a.marks![0].attrs).toEqual({ color: '#c00000', fontFamily: 'Tinos', fontSize: null })
     expect(b.marks![0].attrs).toEqual({ color: '#ffff00' })
+    // Fonts with a bundled equivalent map to it; others are kept as written.
+    expect(c.marks![0].attrs.fontFamily).toBe('Carlito')
+    expect(d.marks![0].attrs.fontFamily).toBe('Comic Sans MS')
   })
 
   it('turning an indented paragraph into a list item drops the paragraph indent', () => {

@@ -20,12 +20,13 @@ function Item({ label, shortcut, onSelect }: { label: string; shortcut?: string;
   )
 }
 
-export function FileMenu({ session }: { session: DocumentSession }) {
+export function FileMenu({ session, onClosed }: { session: DocumentSession; onClosed: () => void }) {
   return (
     <Popover
       menu
       label="File"
       className="menubar-item"
+      onClosed={onClosed}
       trigger={
         <>
           File <ChevronDown size={14} aria-hidden="true" />
