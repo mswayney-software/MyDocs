@@ -47,8 +47,10 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 | @types/react | 19.3.0 | MIT |
 | @types/react-dom | 19.3.0 | MIT |
 | @types/use-sync-external-store | 0.0.6 | MIT |
+| browser-fs-access | 0.38.0 | Apache-2.0 |
 | csstype | 3.2.3 | MIT |
 | fast-equals | 5.4.5 | MIT |
+| idb-keyval | 6.3.0 | Apache-2.0 |
 | linkifyjs | 4.4.0 | MIT |
 | lucide-react | 1.73.0 | ISC |
 | orderedmap | 2.1.1 | MIT |

@@ -33,7 +33,33 @@ body { background: var(--bg); }
   background: var(--chrome); border-bottom: 1px solid var(--line);
   padding: 4px 12px; font-size: 14px;
 }
-.file-name { font-weight: 600; }
+.file-status { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.file-name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40ch; }
+.file-state { color: var(--ink-soft); font-size: 13px; }
+
+/* Dialogs */
+.dlg {
+  width: min(440px, calc(100vw - 32px)); padding: 20px 20px 16px;
+  border: 1px solid var(--line); border-radius: 8px; color: var(--ink);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
+}
+.dlg::backdrop { background: rgb(0 0 0 / 0.3); }
+.dlg-title { margin: 0 0 8px; font-size: 17px; }
+.dlg-body { margin: 0 0 16px; font-size: 14px; line-height: 1.45; color: var(--ink-soft); }
+.dlg-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; font-size: 13px; }
+.dlg-input-row { display: flex; align-items: center; gap: 4px; }
+.dlg-input-row input {
+  flex: 1; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 14px;
+}
+.dlg-suffix { color: var(--ink-soft); }
+.dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; }
+.dlg-btn {
+  height: 32px; padding: 0 14px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--sheet); color: var(--ink); font: inherit; font-size: 14px; cursor: pointer;
+}
+.dlg-btn:hover { background: var(--hover); }
+.dlg-primary { background: var(--focus); border-color: var(--focus); color: #fff; }
+.dlg-primary:hover { background: #1a51b3; }
 .menubar { display: flex; gap: 2px; }
 .menubar-item > .tb-btn { width: auto; padding: 0 8px; gap: 2px; font-size: 14px; }
 

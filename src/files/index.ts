@@ -1,1 +1,3 @@
-// files: see spec Architecture > Folders
+export * from './native'
+export { canWriteBack, openFile, saveFile } from './fileAccess'
+export { DocumentSession } from './session'

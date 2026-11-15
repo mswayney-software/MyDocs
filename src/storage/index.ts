@@ -1,1 +1,1 @@
-// storage: see spec Architecture > Folders
+export * from './autosave'
