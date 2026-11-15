@@ -33,7 +33,14 @@ const contentSecurityPolicy: Plugin = {
     <meta http-equiv="Content-Security-Policy" content="${CSP}" />`),
 }
 
+/**
+ * Where the app is served from. "/" locally and in tests; GitHub Pages serves it from
+ * "/MyDocs/" (set by .github/workflows/pages.yml).
+ */
+const base = process.env.BASE_PATH ?? '/'
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     contentSecurityPolicy,
@@ -46,8 +53,8 @@ export default defineConfig({
         name: 'MyDocs',
         short_name: 'MyDocs',
         description: 'A free word processor for school papers that works offline. Your files stay on your device.',
-        start_url: '/',
-        scope: '/',
+        start_url: base,
+        scope: base,
         display: 'standalone',
         background_color: '#e9e9e6',
         theme_color: '#f7f7f5',
@@ -58,7 +65,7 @@ export default defineConfig({
         ],
         // Installed app opens .owdoc files from the file manager (Chrome and Edge).
         file_handlers: [
-          { action: '/', accept: { 'application/vnd.mydocs+json': ['.owdoc'] } },
+          { action: base, accept: { 'application/vnd.mydocs+json': ['.owdoc'] } },
         ],
       },
       workbox: {
@@ -67,7 +74,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,webmanifest}'],
         // The editor bundle is over Workbox's 2 MB default for a single file.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        navigateFallback: '/index.html',
+        navigateFallback: `${base}index.html`,
         cleanupOutdatedCaches: true,
         // No runtime caching rules: the app makes no runtime requests.
         runtimeCaching: [],

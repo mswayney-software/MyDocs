@@ -17,7 +17,7 @@ A free, open source word processor for high school and college students. It runs
 
 ## Using it
 
-MyDocs is a web app: open it in Chrome, Edge, Firefox or Safari. It isn't hosted anywhere yet; to try it, run it locally (below).
+MyDocs is a web app: **[open MyDocs](https://mswayney-software.github.io/MyDocs/)** in Chrome, Edge, Firefox or Safari. After the first visit it works offline, and in Chrome or Edge you can install it as an app (the Install button in the top bar).
 
 - **Saving.** In Chrome and Edge, Ctrl+S saves back to the file you opened. Firefox and Safari can't write to files on your computer, so Ctrl+S downloads a copy instead, and the app tells you so.
 - **Files.** Documents are saved as `.owdoc` files, a single file with everything in it, images included. Use File > Save as Word file for a `.docx`.
@@ -37,6 +37,7 @@ npx playwright install chromium firefox
 npm run dev        # local dev server
 npm run build      # production build in dist/
 npm run preview    # serve the production build (with offline support)
+BASE_PATH=/MyDocs/ npm run build  # build for a subfolder, as GitHub Pages serves it
 npm test           # unit tests (Vitest)
 npm run test:e2e   # browser tests (Playwright, Chromium and Firefox), accessibility scan, typing speed
 npm run lint       # oxlint
