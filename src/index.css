@@ -273,11 +273,6 @@ body { background: var(--bg); }
   .doc .ProseMirror-selectednode img, .doc img.ProseMirror-selectednode { outline: none; }
 }
 
-/* Export button, at the right end of the top bar (after Install, when that shows). */
-.export-menu { margin-left: auto; }
-.topbar-action ~ .export-menu { margin-left: 8px; }
-.export-menu > .tb-btn { gap: 6px; padding: 0 10px; font-size: 13px; border: 1px solid var(--line); }
-.export-menu .popover-panel { left: auto; right: 0; }
 
 /* Zoom, at the right of the status bar. */
 .status-end { display: inline-flex; align-items: center; gap: 16px; }
@@ -292,3 +287,8 @@ body { background: var(--bg); }
 .zoom-btn:disabled { opacity: 0.35; cursor: default; }
 
 .tb-group { display: inline-flex; align-items: center; gap: 2px; flex-wrap: nowrap; }
+
+/* Update and Install sit together at the right of the top bar. */
+.topbar-action ~ .topbar-action { margin-left: 8px; }
+.topbar-update { background: var(--focus); border-color: var(--focus); color: #fff; }
+.topbar-update:hover:not(:disabled) { background: #1a51b3; }

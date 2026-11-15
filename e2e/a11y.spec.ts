@@ -45,7 +45,7 @@ test('the page, with a document using every kind of content', async ({ page }) =
   await scan(page, 'the page with the cursor in a table')
 })
 
-for (const menu of ['File', 'Insert', 'Format', 'Page', 'Export']) {
+for (const menu of ['File', 'Insert', 'Format', 'Page']) {
   test(`the ${menu} menu`, async ({ page }) => {
     await page.getByRole('button', { name: menu, exact: true }).click()
     await expect(page.getByRole('menu')).toBeVisible()

@@ -3,13 +3,13 @@ import { EditorContent, useEditor } from '@tiptap/react'
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createExtensions } from './editor'
 import { DocumentSession } from './files/session'
-import { InstallButton, OfflineStatus } from './ui/AppStatus'
+import { InstallButton, OfflineStatus, UpdateButton } from './ui/AppStatus'
+import { offline } from './offline'
 import { FileMenu } from './ui/FileMenu'
 import { FileStatus } from './ui/FileStatus'
 import { FindBar } from './ui/FindBar'
 import { FormatMenu } from './ui/FormatMenu'
 import { PageMenu } from './ui/PageMenu'
-import { ExportMenu } from './ui/ExportMenu'
 import { headerFooter, printDocument } from './ui/pageActions'
 import { applyPageStyle } from './files/print'
 import { SheetMargin } from './ui/SheetMargins'
@@ -118,6 +118,14 @@ export default function App() {
   // The printed page: paper size, margins, header, footer, page numbers.
   useEffect(() => applyPageStyle(file.page), [file.page])
 
+  // A new version applies on its own while the page is blank and untouched.
+  useEffect(() => {
+    offline.setIdleCheck(() => {
+      const s = session.getState()
+      return !s.dirty && !s.hasFile && editor.isEmpty
+    })
+  }, [editor, session])
+
   useEffect(() => {
     session.start()
     return () => session.dispose()
@@ -217,8 +225,8 @@ export default function App() {
           <TableMenu editor={editor} />
           <ImageMenu editor={editor} />
         </nav>
+        <UpdateButton />
         <InstallButton />
-        <ExportMenu session={session} ask={ask} onClosed={() => editor.view.focus()} />
       </div>
       <Toolbar editor={editor} onLink={() => void editLink(editor, ask)} onFind={() => openFind(true)} />
       {find && (

@@ -23,16 +23,30 @@ export function OfflineStatus() {
   const s = useSyncExternalStore(offline.subscribe, offline.getState)
   return (
     <span className="status-right">
-      {s.updateReady && (
-        <button type="button" className="status-btn" onClick={() => offline.restartToUpdate()}>
-          <RefreshCw size={12} aria-hidden="true" /> Update ready: restart
-        </button>
-      )}
       {s.offlineReady && (
         <span className="status-offline" title="Everything is stored on this device. No internet needed.">
           <CircleCheck size={12} aria-hidden="true" /> Works offline
         </span>
       )}
     </span>
+  )
+}
+
+/**
+ * A newer version is waiting. Shown in the top bar, where it is seen; it applies by itself
+ * when the page is blank, so this appears only while a document is open.
+ */
+export function UpdateButton() {
+  const s = useSyncExternalStore(offline.subscribe, offline.getState)
+  if (!s.updateReady) return null
+  return (
+    <button
+      type="button"
+      className="tb-btn topbar-action topbar-update"
+      title="A newer version of the app is ready. Your work is backed up and comes back after the restart."
+      onClick={() => offline.restartToUpdate()}
+    >
+      <RefreshCw size={14} aria-hidden="true" /> Update ready: restart
+    </button>
   )
 }

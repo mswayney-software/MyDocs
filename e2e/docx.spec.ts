@@ -20,8 +20,8 @@ test.beforeEach(async ({ page }) => {
 /** Export > Save as Word file, and return where the download landed. */
 async function exportWord(page: Page, keepAs?: string): Promise<string> {
   const download = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'Export' }).click()
-  await page.getByRole('menuitem', { name: 'Save as Word file (.docx)…' }).click()
+  await page.getByRole('button', { name: 'File', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Save as Word file (.docx)…', exact: true }).click()
   const d = await download
   expect(d.suggestedFilename()).toMatch(/\.docx$/)
   const path = await d.path()

@@ -73,6 +73,7 @@ test('types and formats a school paper, and the document survives a JSON round t
 
 test('Format menu applies a hanging indent, highlight applies a color, Escape closes the menu', async ({ page }) => {
   await page.goto('/')
+  await expect(doc(page)).toBeFocused()
   await page.keyboard.type('Works cited entry that is long enough to wrap onto a second line of the page.')
 
   await page.getByRole('button', { name: 'Format', exact: true }).click()
@@ -92,6 +93,7 @@ test('Format menu applies a hanging indent, highlight applies a color, Escape cl
 
 test('Ctrl+A selects the document even when focus is on the toolbar', async ({ page }) => {
   await page.goto('/')
+  await expect(doc(page)).toBeFocused()
   await page.keyboard.type('Only the document gets selected.')
   await page.getByRole('button', { name: 'Bold' }).focus()
   await page.keyboard.press('ControlOrMeta+a')
@@ -106,6 +108,7 @@ test('Ctrl+A selects the document even when focus is on the toolbar', async ({ p
 
 test('a selection mixing a heading and normal text shows a blank style and can go back to Normal', async ({ page }) => {
   await page.goto('/')
+  await expect(doc(page)).toBeFocused()
   await page.keyboard.type('Normal paragraph text.')
   await page.keyboard.press('Enter')
   await page.keyboard.type('Heading text.')
@@ -122,6 +125,7 @@ test('a selection mixing a heading and normal text shows a blank style and can g
 
 test('applying styles to the whole document does not pile up empty lines', async ({ page }) => {
   await page.goto('/')
+  await expect(doc(page)).toBeFocused()
   await page.keyboard.type('One.')
   await page.keyboard.press('Enter')
   await page.keyboard.type('Two.')
