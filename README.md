@@ -10,7 +10,7 @@ A free, open source word processor for high school and college students. It runs
 - **Tables, images, links.** Insert tables, add and remove rows and columns, merge cells, header rows. Insert images from a file, by pasting or by dragging; resize and align them. Links to web pages and email addresses.
 - **School paper templates.** File > New from template sets up an MLA paper or an APA student paper: heading or title page, running header with your last name and page number, double spacing, and a Works Cited or References page.
 - **Page setup and printing.** Letter or A4, margins, header, footer, and page numbers, including MLA's "Smith 3". Print, or save as PDF from the print window.
-- **Word files.** Open a .docx (it opens as a copy; the original is never changed) and save as a Word file to hand in or share. Google Docs opens these too.
+- **Word files.** Open a .docx (it opens as a copy; the original is never changed) and save as a Word file to hand in or share. Exports are checked in Google Docs and LibreOffice.
 - **Tools.** Undo and redo, find and replace, word and character count, your browser's spell check, zoom, and the usual keyboard shortcuts (Ctrl+B, Ctrl+S, Ctrl+P and so on).
 - **Never lose work.** Everything you type is backed up on your device within a second. If the browser or computer crashes, MyDocs offers your work back the next time it opens.
 - **Works offline.** After the first visit, the whole app runs with no internet. In Chrome or Edge you can install it as an app with its own window.

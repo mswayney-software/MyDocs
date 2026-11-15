@@ -10,4 +10,4 @@
 
 ## Reporting a vulnerability
 
-Please use GitHub's private vulnerability reporting ("Report a vulnerability" under this repository's Security tab) rather than a public issue. Describe the problem and how to reproduce it. You'll get a reply within a week.
+Please report it privately: use "Report a vulnerability" under this repository's Security tab if it's there. Otherwise, open an issue saying you've found a security problem, without the details, and you'll be contacted for them. You'll get a reply within a week.
