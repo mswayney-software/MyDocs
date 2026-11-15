@@ -28,8 +28,13 @@ const errorKind = (fn: () => unknown) => {
 describe('native file format', () => {
   it('round trips the document and page settings exactly', () => {
     const text = serialize(sample)
-    expect(JSON.parse(text)).toMatchObject({ format: 'open-writer', version: FORMAT_VERSION })
+    expect(JSON.parse(text)).toMatchObject({ format: 'mydocs', version: FORMAT_VERSION })
     expect(parse(text, schema)).toEqual(sample)
+  })
+
+  it('still opens files saved before the app was named MyDocs', () => {
+    const text = JSON.stringify({ format: 'open-writer', version: 1, doc: sample.doc })
+    expect(parse(text, schema).doc).toEqual(sample.doc)
   })
 
   it('maps font names from before the fonts were bundled', () => {
@@ -40,23 +45,23 @@ describe('native file format', () => {
         { type: 'text', text: 'b', marks: [{ type: 'textStyle', attrs: { fontFamily: 'Liberation Serif', fontSize: null, color: null } }] },
       ] }],
     }
-    const text = JSON.stringify({ format: 'open-writer', version: 1, doc: old })
+    const text = JSON.stringify({ format: 'mydocs', version: 1, doc: old })
     const fonts = parse(text, schema).doc.content![0].content!.map((t) => t.marks![0].attrs!.fontFamily)
     expect(fonts).toEqual(['Arimo', 'Tinos'])
   })
 
   it('keeps unknown page settings, so a round trip never drops data', () => {
-    const text = JSON.stringify({ format: 'open-writer', version: 1, page: { futureThing: 7 }, doc: sample.doc })
+    const text = JSON.stringify({ format: 'mydocs', version: 1, page: { futureThing: 7 }, doc: sample.doc })
     expect(parse(text, schema).page).toMatchObject({ futureThing: 7, paperSize: 'letter' })
   })
 
   it('fills in default page settings when they are missing or invalid', () => {
-    const text = JSON.stringify({ format: 'open-writer', version: 1, page: { margins: { top: 'x' } }, doc: sample.doc })
+    const text = JSON.stringify({ format: 'mydocs', version: 1, page: { margins: { top: 'x' } }, doc: sample.doc })
     expect(parse(text, schema).page).toMatchObject({ margins: DEFAULT_PAGE.margins, pageNumbers: 'none' })
   })
 
   it('explains, rather than crashes on, a file from a newer version', () => {
-    const text = JSON.stringify({ format: 'open-writer', version: FORMAT_VERSION + 1, doc: { type: 'doc' } })
+    const text = JSON.stringify({ format: 'mydocs', version: FORMAT_VERSION + 1, doc: { type: 'doc' } })
     expect(errorKind(() => parse(text, schema))).toBe('newer-version')
     expect(() => parse(text, schema)).toThrow(/newer version/)
   })
@@ -68,7 +73,7 @@ describe('native file format', () => {
   })
 
   it('rejects damaged files instead of opening half a document', () => {
-    const bad = (doc: unknown, version: unknown = 1) => JSON.stringify({ format: 'open-writer', version, doc })
+    const bad = (doc: unknown, version: unknown = 1) => JSON.stringify({ format: 'mydocs', version, doc })
     expect(errorKind(() => parse(bad({ type: 'doc', content: [{ type: 'spaceship' }] }), schema))).toBe('damaged')
     expect(errorKind(() => parse(bad({ type: 'doc', content: [{ type: 'text', text: 'loose' }] }), schema))).toBe('damaged')
     expect(errorKind(() => parse(bad(null), schema))).toBe('damaged')

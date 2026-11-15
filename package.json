@@ -1,7 +1,14 @@
 {
-  "name": "open-writer",
+  "name": "mydocs",
+  "version": "1.0.0",
+  "description": "A free, offline word processor for school papers. No account, no tracking; your files stay on your device.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mswayney-software/MyDocs.git"
+  },
+  "homepage": "https://github.com/mswayney-software/MyDocs#readme",
   "private": true,
-  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -57,6 +64,5 @@
     "vite-plugin-pwa": "^2.0.0",
     "vitest": "^5.1.0",
     "workbox-build": "^7.4.1"
-  },
-  "license": "MIT"
+  }
 }

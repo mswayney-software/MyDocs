@@ -13,7 +13,7 @@ const backupCount = (page: Page) =>
   page.evaluate(
     () =>
       new Promise<number>((resolve, reject) => {
-        const req = indexedDB.open('open-writer')
+        const req = indexedDB.open('mydocs')
         req.onerror = () => reject(req.error)
         req.onsuccess = () => {
           const tx = req.result.transaction('backups', 'readonly')
@@ -225,10 +225,10 @@ test.describe('save and open', () => {
     await open(page)
     await openViaMenu(page, {
       name: 'From the future.owdoc',
-      buffer: Buffer.from(JSON.stringify({ format: 'open-writer', version: 99, doc: { type: 'doc' } })),
+      buffer: Buffer.from(JSON.stringify({ format: 'mydocs', version: 99, doc: { type: 'doc' } })),
     })
     const err = page.getByRole('dialog', { name: 'Could not open "From the future.owdoc"' })
-    await expect(err).toContainText('newer version of Open Writer')
+    await expect(err).toContainText('newer version of MyDocs')
     await err.getByRole('button', { name: 'OK' }).click()
     await expect(page.locator('.file-name')).toHaveText('Untitled document')
   })

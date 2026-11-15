@@ -75,7 +75,7 @@ export class DocumentSession {
 
   private setState(patch: Partial<SessionState>) {
     this.state = { ...this.state, ...patch }
-    document.title = `${this.state.fileName} - Open Writer`
+    document.title = `${this.state.fileName} - MyDocs`
     this.listeners.forEach((fn) => fn())
   }
 
@@ -303,7 +303,7 @@ export class DocumentSession {
 
   /**
    * A Word file opens as a new, unsaved document named after it. The original is only read:
-   * saving writes an Open Writer file, and "Save as Word file" exports a new .docx.
+   * saving writes a MyDocs file, and "Save as Word file" exports a new .docx.
    */
   private async loadWordFile(file: OpenedFile) {
     let imported

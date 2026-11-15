@@ -43,8 +43,8 @@ export default defineConfig({
       injectRegister: false, // registered from src/offline.ts
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Open Writer',
-        short_name: 'Open Writer',
+        name: 'MyDocs',
+        short_name: 'MyDocs',
         description: 'A free word processor for school papers that works offline. Your files stay on your device.',
         start_url: '/',
         scope: '/',
@@ -58,7 +58,7 @@ export default defineConfig({
         ],
         // Installed app opens .owdoc files from the file manager (Chrome and Edge).
         file_handlers: [
-          { action: '/', accept: { 'application/vnd.open-writer+json': ['.owdoc'] } },
+          { action: '/', accept: { 'application/vnd.mydocs+json': ['.owdoc'] } },
         ],
       },
       workbox: {

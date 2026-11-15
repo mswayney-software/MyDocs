@@ -98,7 +98,7 @@ test('MLA paper prints with 1 inch margins and last name plus page number at the
     expect(Math.max(...body.map((t) => t.x + t.w)), `page ${i + 1} right margin`).toBeLessThanOrEqual(p.width - INCH + 1)
     expect(Math.min(...body.map((t) => t.y)), `page ${i + 1} bottom margin`).toBeGreaterThanOrEqual(INCH - 1)
     // Nothing from the app's own toolbar or menus.
-    expect(p.items.map((t) => t.str).join(' ')).not.toMatch(/Normal text|Open Writer|Insert|Works offline/)
+    expect(p.items.map((t) => t.str).join(' ')).not.toMatch(/Normal text|MyDocs|Insert|Works offline/)
   })
   // The page break put Works Cited at the top of the last page, alone.
   const last = pages.at(-1)!

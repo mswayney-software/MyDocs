@@ -113,7 +113,7 @@ describe('images', () => {
   it('drops web images from a hand-made .owdoc file', () => {
     const schema = getSchema(createExtensions())
     const text = JSON.stringify({
-      format: 'open-writer',
+      format: 'mydocs',
       version: 1,
       doc: { type: 'doc', content: [
         { type: 'image', attrs: { src: 'https://tracker.example/p.gif' } },

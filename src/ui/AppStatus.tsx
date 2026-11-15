@@ -10,7 +10,7 @@ export function InstallButton() {
     <button
       type="button"
       className="tb-btn topbar-action"
-      title="Install Open Writer as an app on this computer. It opens in its own window and works offline."
+      title="Install MyDocs as an app on this computer. It opens in its own window and works offline."
       onClick={() => void offline.install()}
     >
       <Download size={16} aria-hidden="true" /> Install app

@@ -8,11 +8,13 @@ import { isEmbeddedImage } from '../editor/image'
  * editor's document JSON (images, from M4 on, are embedded as data URLs).
  * The extension is tied to the product name, which is still a placeholder.
  */
-export const FORMAT_ID = 'open-writer'
+export const FORMAT_ID = 'mydocs'
+/** Files saved before the app was named MyDocs (working title "Open Writer"). */
+export const LEGACY_FORMAT_IDS = ['open-writer']
 export const FORMAT_VERSION = 1
 export const FILE_EXTENSION = '.owdoc'
-export const FILE_MIME = 'application/vnd.open-writer+json'
-export const FILE_DESCRIPTION = 'Open Writer document'
+export const FILE_MIME = 'application/vnd.mydocs+json'
+export const FILE_DESCRIPTION = 'MyDocs document'
 
 export type PaperSize = 'letter' | 'a4'
 export type Align = 'left' | 'center' | 'right'
@@ -75,10 +77,10 @@ export function parse(text: string, schema: Schema): NativeDocument {
   try {
     data = JSON.parse(text)
   } catch {
-    throw new OpenError('not-ours', "This file isn't an Open Writer document, or it is damaged.")
+    throw new OpenError('not-ours', "This file isn't a MyDocs document, or it is damaged.")
   }
-  if (!isRecord(data) || data.format !== FORMAT_ID) {
-    throw new OpenError('not-ours', "This file isn't an Open Writer document.")
+  if (!isRecord(data) || (data.format !== FORMAT_ID && !LEGACY_FORMAT_IDS.includes(data.format as string))) {
+    throw new OpenError('not-ours', "This file isn't a MyDocs document.")
   }
   if (typeof data.version !== 'number' || !Number.isInteger(data.version) || data.version < 1) {
     throw new OpenError('damaged', 'This document is damaged and could not be opened.')
@@ -86,7 +88,7 @@ export function parse(text: string, schema: Schema): NativeDocument {
   if (data.version > FORMAT_VERSION) {
     throw new OpenError(
       'newer-version',
-      'This document was made with a newer version of Open Writer. Update the app to open it.',
+      'This document was made with a newer version of MyDocs. Update the app to open it.',
     )
   }
   if (!isRecord(data.doc)) {

@@ -2,7 +2,7 @@
 export const ZOOM_MIN = 50
 export const ZOOM_MAX = 200
 export const ZOOM_STEP = 10
-const KEY = 'open-writer:zoom'
+const KEY = 'mydocs:zoom'
 
 export function loadZoom(): number {
   try {

@@ -22,7 +22,7 @@ import { Toolbar } from './ui/Toolbar'
 import { useDialogs } from './ui/useDialogs'
 import { WordCount } from './ui/WordCount'
 
-export const APP_NAME = 'Open Writer'
+export const APP_NAME = 'MyDocs'
 
 const imageFiles = (list: FileList | null | undefined) =>
   Array.from(list ?? []).filter((f) => f.type.startsWith('image/'))

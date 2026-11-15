@@ -60,7 +60,7 @@ describe('page setup for printing', () => {
 describe('page settings in the file', () => {
   const schema = getSchema(createExtensions())
   const file = (page: unknown) =>
-    JSON.stringify({ format: 'open-writer', version: 1, page, doc: { type: 'doc', content: [{ type: 'paragraph' }] } })
+    JSON.stringify({ format: 'mydocs', version: 1, page, doc: { type: 'doc', content: [{ type: 'paragraph' }] } })
 
   it('survive save and reopen exactly', () => {
     const page: PageSettings = { ...MLA, paperSize: 'a4', header: 'Essay', headerAlign: 'center', footer: 'x', footerAlign: 'right' }

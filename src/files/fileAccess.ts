@@ -14,7 +14,7 @@ const FILE_TYPES = { description: FILE_DESCRIPTION, extensions: [FILE_EXTENSION]
 const WORD_TYPES = { description: 'Word document', extensions: [DOCX_EXTENSION], mimeTypes: [DOCX_MIME] }
 /** Open accepts our documents and Word documents (which open as a copy). */
 const OPEN_TYPES = {
-  description: 'Documents (Open Writer or Word)',
+  description: 'Documents (MyDocs or Word)',
   extensions: [FILE_EXTENSION, DOCX_EXTENSION],
   mimeTypes: [FILE_MIME, DOCX_MIME],
 }

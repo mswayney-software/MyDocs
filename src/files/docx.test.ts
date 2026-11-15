@@ -112,7 +112,7 @@ describe('writing Word files', () => {
   it('writes no header when there is nothing to print, and no personal details', async () => {
     const { zip, core } = await parts(DEFAULT_PAGE)
     expect(Object.keys(zip.files).some((f) => /word\/header\d*\.xml/.test(f))).toBe(false)
-    expect(core).toContain('<dc:creator>Open Writer</dc:creator>')
+    expect(core).toContain('<dc:creator>MyDocs</dc:creator>')
     expect(core).toContain('<dc:title>Essay</dc:title>')
   })
 })

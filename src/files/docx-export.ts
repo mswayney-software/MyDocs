@@ -99,8 +99,8 @@ export async function exportDocx(doc: JSONContent, page: PageSettings, title: st
 
   const doc_ = new d.Document({
     title,
-    creator: 'Open Writer',
-    lastModifiedBy: 'Open Writer',
+    creator: 'MyDocs',
+    lastModifiedBy: 'MyDocs',
     styles: styles(d),
     numbering: numbering(d),
     sections: [

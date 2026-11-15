@@ -115,7 +115,7 @@ export async function headerFooter(session: DocumentSession, ask: Ask) {
   })
 }
 
-const TIP_KEY = 'open-writer:print-tip-hidden'
+const TIP_KEY = 'mydocs:print-tip-hidden'
 const tipHidden = () => {
   try {
     return localStorage.getItem(TIP_KEY) === '1'

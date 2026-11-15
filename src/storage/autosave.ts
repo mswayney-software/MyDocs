@@ -36,9 +36,9 @@ interface HistoryEntry {
 }
 
 let store: UseStore | null = null
-const db = () => (store ??= createStore('open-writer', 'backups'))
+const db = () => (store ??= createStore('mydocs', 'backups'))
 
-const LOCK_PREFIX = 'open-writer-doc:'
+const LOCK_PREFIX = 'mydocs-doc:'
 
 export async function writeSnapshot(snap: Snapshot): Promise<void> {
   try {

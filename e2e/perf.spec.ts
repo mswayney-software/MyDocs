@@ -11,6 +11,8 @@ const doc = (page: Page) => page.getByRole('textbox', { name: 'Document' })
 
 test('typing stays responsive in a 50-page document on a slow machine', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'Event Timing and CPU throttling are Chromium features')
+  // Shared CI machines vary too much in speed for a timing test; run it locally (or set PERF=1).
+  test.skip(!!process.env.CI && !process.env.PERF, 'Timing test runs locally, not on shared CI machines')
   test.setTimeout(180_000)
   await page.goto('/')
   await expect(doc(page)).toBeFocused()
