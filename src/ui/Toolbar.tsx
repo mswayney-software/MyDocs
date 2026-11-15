@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/react'
 import {
-  Baseline, Bold, Highlighter, Italic, List, ListIndentDecrease, ListIndentIncrease, ListOrdered, Redo2,
+  Baseline, Bold, Highlighter, Link, Search, Italic, List, ListIndentDecrease, ListIndentIncrease, ListOrdered, Redo2,
   RemoveFormatting, Strikethrough, Subscript, Superscript, TextAlignCenter, TextAlignEnd, TextAlignJustify,
   TextAlignStart, Underline, Undo2,
 } from 'lucide-react'
@@ -60,7 +60,7 @@ const ALIGNS: { value: Align; label: string; shortcut: string; icon: ReactNode }
   { value: 'justify', label: 'Justify', shortcut: 'Mod+Shift+J', icon: <TextAlignJustify {...ICON} /> },
 ]
 
-export function Toolbar({ editor }: { editor: Editor }) {
+export function Toolbar({ editor, onLink, onFind }: { editor: Editor; onLink: () => void; onFind: () => void }) {
   const s = useFormatState(editor)
   const run = () => editor.chain().focus()
   const refocus = () => editor.view.focus()
@@ -237,6 +237,13 @@ export function Toolbar({ editor }: { editor: Editor }) {
         onClick={() => (s.inList ? run().sinkListItem('listItem').run() : run().changeIndent(1).run())}
       >
         <ListIndentIncrease {...ICON} />
+      </Btn>
+      <Sep />
+      <Btn label="Link" shortcut="Mod+K" active={s.link} onClick={onLink}>
+        <Link {...ICON} />
+      </Btn>
+      <Btn label="Find and replace" shortcut="Mod+F" onClick={onFind}>
+        <Search {...ICON} />
       </Btn>
     </div>
   )

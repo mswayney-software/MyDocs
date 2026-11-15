@@ -178,6 +178,7 @@ export const ParagraphFormat = Extension.create({
       // In a list, Tab nests the item. Elsewhere, Tab at the start of a paragraph
       // adds a first-line indent, and anywhere else it types a tab character.
       Tab: ({ editor }) => {
+        if (editor.isActive('table')) return false // moves to the next cell
         if (editor.isActive('listItem')) return editor.commands.sinkListItem('listItem')
         const { selection } = editor.state
         const atStart = selection.empty && selection.$from.parentOffset === 0
@@ -188,6 +189,7 @@ export const ParagraphFormat = Extension.create({
       // Shift+Tab undoes the above. With nothing to undo it falls through,
       // so keyboard users can still move focus back to the toolbar.
       'Shift-Tab': ({ editor }) => {
+        if (editor.isActive('table')) return false // moves to the previous cell
         if (editor.isActive('listItem')) return editor.commands.liftListItem('listItem')
         const attrs = editor.state.selection.$from.parent.attrs as ParagraphAttrs
         if ((attrs.firstLine ?? 0) > 0) return editor.commands.toggleFirstLineIndent()

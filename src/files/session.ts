@@ -6,31 +6,14 @@ import {
   writeSnapshot,
 } from '../storage/autosave'
 import { canWriteBack, openFile, saveFile } from './fileAccess'
+import type { Ask } from '../ui/dialogTypes'
 import { baseName, DEFAULT_PAGE, FILE_EXTENSION, OpenError, parse, safeFileName, serialize, type PageSettings } from './native'
 
 /** Backups are written at most this long after a change, so a crash loses under 2 seconds. */
 export const BACKUP_DELAY_MS = 1000
 export const UNTITLED = 'Untitled document'
 
-export interface DialogButton {
-  label: string
-  value: string
-  primary?: boolean
-}
-export interface DialogSpec {
-  title: string
-  body?: string
-  /** A text field, such as a file name. */
-  input?: { label: string; value: string; suffix?: string }
-  buttons: DialogButton[]
-  /** Answer used when the dialog is dismissed with Escape. */
-  cancelValue: string
-}
-export interface DialogAnswer {
-  value: string
-  input: string
-}
-export type Ask = (spec: DialogSpec) => Promise<DialogAnswer>
+export type { Ask, DialogAnswer, DialogSpec } from '../ui/dialogTypes'
 
 export interface SessionState {
   fileName: string
@@ -215,7 +198,7 @@ export class DocumentSession {
       const answer = await this.ask({
         title: 'Save as',
         body: 'Firefox and Safari save by downloading a copy to your Downloads folder.',
-        input: { label: 'File name', value: this.state.fileName, suffix: FILE_EXTENSION },
+        fields: [{ key: 'name', label: 'File name', value: this.state.fileName, suffix: FILE_EXTENSION }],
         buttons: [
           { label: 'Cancel', value: 'cancel' },
           { label: 'Download', value: 'save', primary: true },
@@ -223,7 +206,7 @@ export class DocumentSession {
         cancelValue: 'cancel',
       })
       if (answer.value !== 'save') return false
-      this.setState({ fileName: safeFileName(answer.input) })
+      this.setState({ fileName: safeFileName(answer.values.name ?? '') })
     }
     return this.writeFile(null)
   }
@@ -283,14 +266,16 @@ export class DocumentSession {
       await this.showError(`Could not open "${file.name}"`, message)
       return
     }
-    await this.discardBackupIfUnsaved()
+    const cleanup = this.detachCurrent()
     this.load({ doc: parsed.doc, page: parsed.page, fileName: baseName(file.name), handle: file.handle, saved: true })
+    await cleanup()
   }
 
   private async doNewDocument(): Promise<void> {
     if (!(await this.confirmLeave())) return
-    await this.discardBackupIfUnsaved()
+    const cleanup = this.detachCurrent()
     this.load({ doc: { type: 'doc', content: [{ type: 'paragraph' }] }, page: structuredClone(DEFAULT_PAGE), fileName: UNTITLED, handle: null, saved: true, hasFile: false })
+    await cleanup()
   }
 
   /** If there are unsaved changes, ask what to do. Resolves false to stay put. */
@@ -310,12 +295,22 @@ export class DocumentSession {
     return answer.value === 'discard'
   }
 
-  /** The student chose not to keep these changes; drop the backup so it isn't offered later. */
-  private async discardBackupIfUnsaved() {
+  /**
+   * Stop backing up the current document before another replaces it. Returns the cleanup to
+   * run after the swap: if the student discarded unsaved changes, their backup is deleted so
+   * it isn't offered later. The swap itself never waits on storage, so keys typed right after
+   * New or Open land in the new document.
+   */
+  private detachCurrent(): () => Promise<void> {
     if (this.backupTimer) clearTimeout(this.backupTimer)
     this.backupTimer = null
-    await this.writing
-    if (this.state.dirty) await deleteDocument(this.id)
+    const id = this.id
+    const discarded = this.state.dirty
+    const pending = this.writing
+    return async () => {
+      await pending
+      if (discarded) await deleteDocument(id)
+    }
   }
 
   private load(opts: {
@@ -352,7 +347,7 @@ export class DocumentSession {
     })
     // Let the toolbar and everything else that listens to transactions catch up.
     this.editor.view.dispatch(this.editor.state.tr.setMeta('addToHistory', false))
-    this.editor.commands.focus('start')
+    this.editor.view.focus() // now, not a frame later: the cursor is already at the start
     if (!opts.saved) void this.backup()
   }
 
@@ -384,10 +379,13 @@ export class DocumentSession {
       try {
         const parsed = parse(snap.data, this.editor.schema)
         // Work typed before the dialog appeared keeps its own backup (offered next launch);
-        // an untouched blank page has nothing worth keeping.
-        if (this.state.dirty) await this.backup()
-        else await deleteDocument(this.id)
+        // an untouched blank page has nothing worth keeping. The backup captures the text
+        // now, so the swap below never waits on storage.
+        const oldId = this.id
+        const keepOld = this.state.dirty
+        if (keepOld) void this.backup()
         this.load({ doc: parsed.doc, page: parsed.page, fileName: snap.fileName, handle: snap.handle, saved: false, id: snap.id })
+        if (!keepOld) await deleteDocument(oldId)
       } catch {
         await this.showError('Could not recover', 'That backup is damaged and could not be restored. It has been kept in case it can be recovered later.')
       }
@@ -397,7 +395,8 @@ export class DocumentSession {
 
   // ---- messages -----------------------------------------------------------------------
 
-  private notify(message: string, ms = 4000) {
+  /** Show a short message next to the file name. */
+  notify(message: string, ms = 4000) {
     if (this.noticeTimer) clearTimeout(this.noticeTimer)
     this.setState({ notice: message })
     this.noticeTimer = setTimeout(() => this.setState({ notice: null }), ms)
@@ -405,6 +404,6 @@ export class DocumentSession {
 
   private async showError(title: string, body: string) {
     await this.ask({ title, body, buttons: [{ label: 'OK', value: 'ok', primary: true }], cancelValue: 'ok' })
-    this.editor.commands.focus()
+    this.editor.view.focus()
   }
 }

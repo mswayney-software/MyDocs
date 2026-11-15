@@ -96,6 +96,7 @@ export function useFormatState(editor: Editor) {
         orderedList: e.isActive('orderedList'),
         inList: e.isActive('listItem'),
         blockquote: e.isActive('blockquote'),
+        link: e.isActive('link'),
         canUndo: e.can().undo(),
         canRedo: e.can().redo(),
       }

@@ -159,3 +159,64 @@ body { background: var(--bg); }
   background: var(--sheet); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer;
 }
 .status-btn:hover { background: var(--hover); }
+
+/* Status bar left side: app name and word count */
+.status-left { display: inline-flex; gap: 16px; }
+
+/* Links: a click places the cursor; Ctrl+click opens (see App.tsx). */
+.doc a { color: #1f4e9e; text-decoration: underline; cursor: text; }
+
+/* Tables */
+.doc table { border-collapse: collapse; width: 100%; margin: 6pt 0; table-layout: fixed; }
+.doc td, .doc th { border: 1px solid #000; padding: 3pt 5pt; vertical-align: top; position: relative; }
+.doc th { font-weight: bold; background: #f2f2f2; text-align: left; }
+.doc td p, .doc th p { margin: 0; }
+.doc .selectedCell::after {
+  content: ''; position: absolute; inset: 0; background: rgb(31 95 209 / 0.15); pointer-events: none;
+}
+.doc .tableWrapper { overflow-x: auto; }
+
+/* Images: block, aligned through the resize container. */
+.doc [data-resize-container] { margin: 6pt 0; justify-content: center; }
+.doc [data-resize-container]:has(img[data-align='left']) { justify-content: flex-start; }
+.doc [data-resize-container]:has(img[data-align='right']) { justify-content: flex-end; }
+.doc img { max-width: 100%; height: auto; display: block; }
+.doc [data-resize-handle] { width: 10px; height: 10px; background: var(--focus); border: 1px solid #fff; border-radius: 2px; opacity: 0; }
+.doc .ProseMirror-selectednode [data-resize-handle], .doc [data-resize-container]:hover [data-resize-handle] { opacity: 1; }
+.doc .ProseMirror-selectednode img, .doc img.ProseMirror-selectednode { outline: 2px solid var(--focus); outline-offset: 1px; }
+
+/* Page break: a labeled line on screen, a real break when printed (M5). */
+.doc .page-break {
+  position: relative; height: 0; margin: 14pt 0; border-top: 1px dashed #9a9a96; user-select: none;
+}
+.doc .page-break::after {
+  content: 'Page break'; position: absolute; left: 50%; top: -0.7em; transform: translateX(-50%);
+  padding: 0 8px; background: var(--sheet); color: #77776f; font: 11px system-ui, sans-serif;
+}
+.doc .page-break.ProseMirror-selectednode { border-top-color: var(--focus); }
+@media print { .doc .page-break { break-after: page; border: 0; margin: 0; } .doc .page-break::after { content: none; } }
+
+/* Find and replace */
+.doc .search-match { background: #ffe58f; }
+.doc .search-current { background: #ff9f43; }
+.findbar {
+  display: flex; flex-direction: column; gap: 4px; padding: 6px 12px;
+  background: var(--chrome); border-bottom: 1px solid var(--line); font-size: 13px;
+}
+.findbar-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.findbar-input { width: 260px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+.findbar-status { min-width: 72px; color: var(--ink-soft); }
+.findbar-check { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; }
+.findbar-close { margin-left: auto; }
+.findbar-btn {
+  height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--sheet); font: inherit; cursor: pointer;
+}
+.findbar-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* Dialog extras */
+.dlg-fields { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.dlg-fields .dlg-field { margin-bottom: 0; }
+.dlg-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.menu-item:disabled { opacity: 0.4; cursor: default; }
+.menu-item:disabled:hover { background: transparent; }

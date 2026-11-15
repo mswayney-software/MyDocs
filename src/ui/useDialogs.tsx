@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type ReactNode } from 'react'
-import type { Ask, DialogAnswer, DialogSpec } from '../files/session'
+import type { Ask, DialogAnswer, DialogSpec } from './dialogTypes'
 import { DialogView } from './DialogView'
 
 interface Pending {
@@ -10,7 +10,11 @@ interface Pending {
 }
 
 /** Promise-based modal dialogs: `const answer = await ask({...})`. One at a time, queued. */
-export function useDialogs(): [ReactNode, Ask] {
+/**
+ * `onClosed` runs the moment a dialog closes, before the code that asked continues (which may
+ * await storage). Pass the editor's focus, so keys typed right after a dialog are never lost.
+ */
+export function useDialogs(onClosed?: () => void): [ReactNode, Ask] {
   const [queue, setQueue] = useState<Pending[]>([])
   const nextId = useRef(0)
   const ask = useCallback<Ask>((spec) => {
@@ -23,6 +27,7 @@ export function useDialogs(): [ReactNode, Ask] {
       key={current.id}
       spec={current.spec}
       onAnswer={(a) => {
+        onClosed?.()
         current.resolve(a)
         setQueue((q) => q.filter((p) => p.id !== current.id))
       }}

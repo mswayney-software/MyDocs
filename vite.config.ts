@@ -1,11 +1,42 @@
 /// <reference types="vitest/config" />
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+
+/**
+ * Production builds carry a Content-Security-Policy: the browser itself refuses any request to
+ * another server (images, fonts, scripts, fetches). "Zero network requests" is enforced, not
+ * just promised. Dev builds skip it, since the dev server injects inline scripts.
+ */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  // Inline style attributes carry document formatting (alignment, indents, colors).
+  "style-src 'self' 'unsafe-inline'",
+  // Images live inside documents as data URLs.
+  "img-src 'self' data: blob:",
+  "font-src 'self'",
+  "connect-src 'self'",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "base-uri 'self'",
+  "form-action 'none'",
+].join('; ')
+
+const contentSecurityPolicy: Plugin = {
+  name: 'content-security-policy',
+  apply: 'build',
+  transformIndexHtml: (html) =>
+    html.replace('<head>', `<head>
+    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`),
+}
 
 export default defineConfig({
   plugins: [
     react(),
+    contentSecurityPolicy,
     VitePWA({
       // A new version waits until the student chooses to restart; never reload mid-sentence.
       registerType: 'prompt',

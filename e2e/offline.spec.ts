@@ -126,7 +126,7 @@ test('after the first load, the app starts and every feature works with the netw
   const chooser = page.waitForEvent('filechooser')
   await page.keyboard.press('ControlOrMeta+o')
   await (await chooser).setFiles(path)
-  expect(await page.evaluate(() => window.__openWriter!.getJSON())).toEqual(before)
+  await expect.poll(() => page.evaluate(() => window.__openWriter!.getJSON())).toEqual(before)
 
   expect(requests.failed, 'requests that tried the network').toEqual([])
   if (browserName === 'chromium') expect(requests.network, 'responses not from the service worker').toEqual([])

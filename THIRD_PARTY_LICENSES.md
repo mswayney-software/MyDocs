@@ -29,6 +29,7 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 | @tiptap/extension-heading | 3.34.0 | MIT |
 | @tiptap/extension-highlight | 3.34.0 | MIT |
 | @tiptap/extension-horizontal-rule | 3.34.0 | MIT |
+| @tiptap/extension-image | 3.34.0 | MIT |
 | @tiptap/extension-italic | 3.34.0 | MIT |
 | @tiptap/extension-link | 3.34.0 | MIT |
 | @tiptap/extension-list | 3.34.0 | MIT |
@@ -39,6 +40,7 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 | @tiptap/extension-strike | 3.34.0 | MIT |
 | @tiptap/extension-subscript | 3.34.0 | MIT |
 | @tiptap/extension-superscript | 3.34.0 | MIT |
+| @tiptap/extension-table | 3.34.0 | MIT |
 | @tiptap/extension-text | 3.34.0 | MIT |
 | @tiptap/extension-text-align | 3.34.0 | MIT |
 | @tiptap/extension-text-style | 3.34.0 | MIT |
