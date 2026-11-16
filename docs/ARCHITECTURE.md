@@ -19,7 +19,7 @@ The editor (Tiptap on ProseMirror) holds the document as JSON. Next to it, a sma
 - `src/files`: native file, Word import and export, print, the document session (open, save, backup, recovery)
 - `src/storage`: IndexedDB backups and locks
 - `src/templates`: Blank, MLA paper, APA student paper
-- `src/ui`: top bar, menus, toolbar, dialogs, find bar, status bar
+- `src/ui`: top bar, menus, toolbar, dialogs, find bar, status bar, zoom, dark mode and the typewriter light (`appearance.ts`, `TypewriterLight.tsx`)
 - `e2e`: browser tests (Playwright), including the accessibility scan and the 50-page typing test
 - `scripts`: license check, icon generation, sample paper download
 
@@ -27,6 +27,7 @@ The editor (Tiptap on ProseMirror) holds the document as JSON. Next to it, a sma
 
 - **Never lose typing.** Focus moves to the document synchronously after every dialog and menu, file actions never wait on storage before swapping documents, and backups are written within a second.
 - **No network.** A content security policy in production builds blocks requests to any other site; images from web pages are refused; links open only on Ctrl+click.
+- **The screen never changes the paper.** Zoom, dark mode and the typewriter light are screen-only CSS. Dark mode inverts the page with a filter (hues kept, images turned back), so any color a student picks stays readable; `@media print` puts it back to black on white.
 - **Plain words.** Messages say what happened and what to do, without format jargon.
 
 ## Tests
@@ -34,4 +35,4 @@ The editor (Tiptap on ProseMirror) holds the document as JSON. Next to it, a sma
 - Unit tests (Vitest, jsdom) for the file format, Word XML reading and writing, print rules, editor commands.
 - Browser tests (Playwright, Chromium and Firefox) for every feature, kill-the-tab recovery, offline start with the network off, MLA printing checked in the PDF, Word round trips, and real sample papers.
 - An axe-core accessibility scan (WCAG 2.1 A and AA) of every screen, menu and dialog.
-- A typing test in a 50-page document with the CPU slowed 4x, run after the others so nothing competes for the CPU.
+- A typing test in a 50-page document with the CPU slowed 4x, in the normal look and again in dark mode with the typewriter light, run after the others so nothing competes for the CPU.

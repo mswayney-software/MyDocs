@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
-const ITEM_SELECTOR = '[role="menuitem"], [role="menuitemcheckbox"], [data-item]'
+const ITEM_SELECTOR = '[role="menuitem"], [role="menuitemcheckbox"], [role="menuitemradio"], [data-item]'
 
 interface PopoverProps {
   /** Accessible name of the trigger button and the panel. */

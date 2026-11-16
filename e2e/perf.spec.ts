@@ -9,11 +9,20 @@ import { fiftyPages } from './fifty-pages'
 
 const doc = (page: Page) => page.getByRole('textbox', { name: 'Document' })
 
-test('typing stays responsive in a 50-page document on a slow machine', async ({ page, browserName }) => {
+// Also with dark mode and the typewriter light on: the page is drawn through a filter, and the
+// light moves on every keystroke.
+for (const look of ['light', 'dark with the typewriter light'] as const) {
+test(`typing stays responsive in a 50-page document on a slow machine (${look})`, async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'Event Timing and CPU throttling are Chromium features')
   // Shared CI machines vary too much in speed for a timing test; run it locally (or set PERF=1).
   test.skip(!!process.env.CI && !process.env.PERF, 'Timing test runs locally, not on shared CI machines')
   test.setTimeout(180_000)
+  if (look !== 'light') {
+    await page.addInitScript(() => {
+      localStorage.setItem('mydocs:theme', 'dark')
+      localStorage.setItem('mydocs:lamp', 'on')
+    })
+  }
   await page.goto('/')
   await expect(doc(page)).toBeFocused()
 
@@ -68,8 +77,8 @@ test('typing stays responsive in a 50-page document on a slow machine', async ({
     return rank <= fast ? 16 : sorted[rank - fast - 1]
   }
   const report = { keys, slowerThan16ms: sorted.length, p50: pct(50), p95: pct(95), worst: sorted.at(-1) ?? 0 }
-  test.info().annotations.push({ type: 'typing latency at 4x CPU slowdown (ms)', description: JSON.stringify(report) })
-  console.log('typing latency (ms, 4x slower CPU):', JSON.stringify(report))
+  test.info().annotations.push({ type: `typing latency at 4x CPU slowdown (ms), ${look}`, description: JSON.stringify(report) })
+  console.log(`typing latency (ms, 4x slower CPU, ${look}):`, JSON.stringify(report))
 
   // Under 50 ms feels instant; under 100 ms is the usual limit for "responsive".
   expect(report.p95, 'p95 key-to-paint time').toBeLessThan(50)
@@ -79,3 +88,4 @@ test('typing stays responsive in a 50-page document on a slow machine', async ({
   const text = await page.evaluate(() => window.__openWriter!.state.doc.textContent)
   expect(text).toContain('The reformers wrote letters to the newspapers every week.')
 })
+}

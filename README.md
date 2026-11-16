@@ -11,6 +11,7 @@ A free, open source word processor for high school and college students. It runs
 - **School paper templates.** File > New from template sets up an MLA paper or an APA student paper: heading or title page, running header with your last name and page number, double spacing, and a Works Cited or References page.
 - **Page setup and printing.** Letter or A4, margins, header, footer, and page numbers, including MLA's "Smith 3". Print, or save as PDF from the print window.
 - **Word files.** Open a .docx (it opens as a copy; the original is never changed) and save as a Word file to hand in or share. Exports are checked in Google Docs and LibreOffice.
+- **Dark mode and a typewriter light.** View > Dark for a dark app and a dark page (it still prints black on white), or Match my device. View > Typewriter light puts a soft band of light on the line you're writing and leaves the rest of the page in shadow, like a lamp over a typewriter at night.
 - **Tools.** Undo and redo, find and replace, word and character count, your browser's spell check, zoom, and the usual keyboard shortcuts (Ctrl+B, Ctrl+S, Ctrl+P and so on).
 - **Never lose work.** Everything you type is backed up on your device within a second. If the browser or computer crashes, MyDocs offers your work back the next time it opens.
 - **Works offline.** After the first visit, the whole app runs with no internet. In Chrome or Edge you can install it as an app with its own window.

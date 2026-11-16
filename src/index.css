@@ -11,6 +11,11 @@
   --pressed: #d9e3f5;
   --pressed-ink: #17407e;
   --focus: #1f5fd1;
+  /* The page itself: black on white, as it prints. Dark mode changes these on screen only. */
+  --paper: #ffffff;
+  --paper-shade: #f2f2f2;
+  --paper-ink: #000000;
+  color-scheme: light;
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   color: var(--ink);
 }
@@ -37,7 +42,7 @@ body { background: var(--bg); }
 /* Dialogs */
 .dlg {
   width: min(440px, calc(100vw - 32px)); padding: 20px 20px 16px;
-  border: 1px solid var(--line); border-radius: 8px; color: var(--ink);
+  border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--sheet);
   box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
 }
 .dlg::backdrop { background: rgb(0 0 0 / 0.3); }
@@ -47,6 +52,7 @@ body { background: var(--bg); }
 .dlg-input-row { display: flex; align-items: center; gap: 4px; }
 .dlg-input-row input {
   flex: 1; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 14px;
+  background: var(--sheet); color: var(--ink);
 }
 .dlg-suffix { color: var(--ink-soft); }
 .dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; }
@@ -109,7 +115,7 @@ body { background: var(--bg); }
 .swatches { display: flex; flex-direction: column; gap: 6px; width: 148px; }
 .swatch-none {
   padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px;
-  background: var(--sheet); font: inherit; font-size: 13px; cursor: pointer;
+  background: var(--sheet); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
 }
 .swatch-none:hover { background: var(--hover); }
 .swatch-grid { display: grid; grid-template-columns: repeat(5, 24px); gap: 6px; }
@@ -124,7 +130,7 @@ body { background: var(--bg); }
   position: relative;
   width: var(--paper-w); max-width: 100%; min-height: var(--paper-h); margin: 0 auto;
   padding: var(--m-top) var(--m-right) var(--m-bottom) var(--m-left);
-  background: var(--sheet); box-shadow: 0 1px 3px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(0 0 0 / 0.04);
+  background: var(--paper); color-scheme: light; box-shadow: 0 1px 3px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(0 0 0 / 0.04);
 }
 .statusbar {
   background: var(--chrome); border-top: 1px solid var(--line);
@@ -133,7 +139,7 @@ body { background: var(--bg); }
 
 /* Document content. Sizes here must match BLOCK_FONT_SIZE in useFormatState.ts. */
 .doc {
-  outline: none; min-height: calc(var(--paper-h) - var(--m-top) - var(--m-bottom)); color: #000;
+  outline: none; min-height: calc(var(--paper-h) - var(--m-top) - var(--m-bottom)); color: var(--paper-ink);
   font-family: 'Tinos', serif; font-size: 12pt; line-height: 1.15;
   tab-size: 0.5in; overflow-wrap: break-word;
 }
@@ -174,7 +180,7 @@ body { background: var(--bg); }
 /* Tables */
 .doc table { border-collapse: collapse; width: 100%; margin: 6pt 0; table-layout: fixed; }
 .doc td, .doc th { border: 1px solid #000; padding: 3pt 5pt; vertical-align: top; position: relative; }
-.doc th { font-weight: bold; background: #f2f2f2; text-align: left; }
+.doc th { font-weight: bold; background: var(--paper-shade); text-align: left; }
 .doc td p, .doc th p { margin: 0; }
 .doc .selectedCell::after {
   content: ''; position: absolute; inset: 0; background: rgb(31 95 209 / 0.15); pointer-events: none;
@@ -196,7 +202,7 @@ body { background: var(--bg); }
 }
 .doc .page-break::after {
   content: 'Page break'; position: absolute; left: 50%; top: -0.7em; transform: translateX(-50%);
-  padding: 0 8px; background: var(--sheet); color: #77776f; font: 11px system-ui, sans-serif;
+  padding: 0 8px; background: var(--paper); color: #77776f; font: 11px system-ui, sans-serif;
 }
 .doc .page-break.ProseMirror-selectednode { border-top-color: var(--focus); }
 
@@ -209,13 +215,13 @@ body { background: var(--bg); }
   background: var(--chrome); border-bottom: 1px solid var(--line); font-size: 13px;
 }
 .findbar-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-.findbar-input { width: 260px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; font: inherit; }
+.findbar-input { width: 260px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; font: inherit; background: var(--sheet); color: var(--ink); }
 .findbar-status { min-width: 72px; color: var(--ink-soft); }
 .findbar-check { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; }
 .findbar-close { margin-left: auto; }
 .findbar-btn {
   height: 28px; padding: 0 10px; border: 1px solid var(--line); border-radius: 4px;
-  background: var(--sheet); font: inherit; cursor: pointer;
+  background: var(--sheet); color: var(--ink); font: inherit; cursor: pointer;
 }
 .findbar-btn:disabled { opacity: 0.4; cursor: default; }
 
@@ -255,7 +261,7 @@ body { background: var(--bg); }
  */
 @media print {
   html, body, #root, .app { display: block; height: auto; background: #fff; }
-  .chrome, .statusbar, .dlg, .popover-panel, .sheet-margin { display: none !important; }
+  .chrome, .statusbar, .dlg, .popover-panel, .sheet-margin, .typewriter-light { display: none !important; }
   .workspace { overflow: visible; padding: 0; }
   .sheet { width: auto; max-width: none; min-height: 0; padding: 0; box-shadow: none; zoom: 1 !important; }
   .doc { min-height: 0; caret-color: transparent; }
@@ -292,3 +298,62 @@ body { background: var(--bg); }
 .topbar-action ~ .topbar-action { margin-left: 8px; }
 .topbar-update { background: var(--focus); border-color: var(--focus); color: #fff; }
 .topbar-update:hover:not(:disabled) { background: #1a51b3; }
+
+/*
+ * Dark mode. The app's controls get dark colors; the page is turned dark by inverting it
+ * (with hues kept), so any text color or highlight a student picks stays readable, and
+ * images are turned back so photos look right. Screen only: printing is always black on white.
+ */
+:root[data-theme='dark'] {
+  --bg: #131416;
+  --sheet: #2b2c30;
+  --ink: #e8e8e5;
+  --ink-soft: #a9a9a4;
+  --chrome: #1f2023;
+  --line: #43454a;
+  --hover: #37383d;
+  --pressed: #2a3d63;
+  --pressed-ink: #cddcff;
+  --focus: #3b72dd;
+  color-scheme: dark;
+}
+@media screen {
+  /* Before inverting: these become a #1e1e1e page with soft white #e3e3e3 text. */
+  :root[data-theme='dark'] { --paper: #e1e1e1; --paper-shade: #d2d2d2; --paper-ink: #1c1c1c; }
+  :root[data-theme='dark'] .sheet {
+    filter: invert(1) hue-rotate(180deg);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.1);
+  }
+  :root[data-theme='dark'] .doc img { filter: invert(1) hue-rotate(180deg); }
+}
+.sheet-wrap { position: relative; }
+
+/*
+ * Typewriter light (View menu): a band of light on the line being written, the rest of the
+ * page in shadow. The band's edges fade (--fade, set from the line height), and a spread
+ * shadow darkens everything beyond it, clipped to the scrolling page area.
+ */
+.typewriter-light {
+  --dim: rgb(18 16 12 / 0.55);
+  --glow: rgb(255 214 150 / 0.10);
+  position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none;
+  /* Eased fades (not straight lines), so the edge of the light has no visible seam. */
+  --d75: color-mix(in srgb, var(--dim) 75%, transparent);
+  --d40: color-mix(in srgb, var(--dim) 40%, transparent);
+  --d12: color-mix(in srgb, var(--dim) 12%, transparent);
+  background:
+    linear-gradient(to bottom, transparent, var(--glow) 50%, transparent),
+    linear-gradient(to bottom,
+      var(--dim), var(--d75) calc(var(--fade) * 0.3), var(--d40) calc(var(--fade) * 0.6), var(--d12) calc(var(--fade) * 0.85), transparent var(--fade),
+      transparent calc(100% - var(--fade)), var(--d12) calc(100% - var(--fade) * 0.85), var(--d40) calc(100% - var(--fade) * 0.6),
+      var(--d75) calc(100% - var(--fade) * 0.3), var(--dim));
+  box-shadow: 0 0 0 200vmax var(--dim);
+  transition: transform 140ms ease-out, height 140ms ease-out;
+}
+:root[data-theme='dark'] .typewriter-light {
+  --dim: rgb(0 0 0 / 0.66);
+  --glow: rgb(255 190 110 / 0.07);
+}
+@media (prefers-reduced-motion: reduce) {
+  .typewriter-light { transition: none; }
+}

@@ -16,6 +16,9 @@ import { SheetMargin } from './ui/SheetMargins'
 import { sheetStyle } from './ui/sheetStyle'
 import { ZoomControl } from './ui/ZoomControl'
 import { loadZoom, saveZoom } from './ui/zoom'
+import { loadLamp, loadTheme, saveLamp, saveTheme, type Theme } from './ui/appearance'
+import { TypewriterLight } from './ui/TypewriterLight'
+import { ViewMenu } from './ui/ViewMenu'
 import { ImageMenu, InsertMenu, TableMenu } from './ui/InsertMenus'
 import { editLink, insertImageFiles, syncSelection } from './ui/insertActions'
 import { Toolbar } from './ui/Toolbar'
@@ -104,6 +107,16 @@ export default function App() {
   const changeZoom = (z: number) => {
     setZoom(z)
     saveZoom(z)
+  }
+  const [theme, setTheme] = useState(loadTheme)
+  const changeTheme = (t: Theme) => {
+    setTheme(t)
+    saveTheme(t)
+  }
+  const [lamp, setLamp] = useState(loadLamp)
+  const changeLamp = (on: boolean) => {
+    setLamp(on)
+    saveLamp(on)
   }
   useEffect(() => {
     findOpen.current = find !== null
@@ -222,6 +235,7 @@ export default function App() {
           <InsertMenu editor={editor} ask={ask} />
           <FormatMenu editor={editor} />
           <PageMenu session={session} ask={ask} onClosed={() => editor.view.focus()} />
+          <ViewMenu theme={theme} onTheme={changeTheme} lamp={lamp} onLamp={changeLamp} onClosed={() => editor.view.focus()} />
           <TableMenu editor={editor} />
           <ImageMenu editor={editor} />
         </nav>
@@ -237,16 +251,19 @@ export default function App() {
         className="workspace"
         onMouseDown={(e) => {
           // Clicking the gray area around the page puts the cursor at the end, like a real page.
-          if (e.target === e.currentTarget) {
+          if (e.target === e.currentTarget || (e.target as HTMLElement).classList.contains('sheet-wrap')) {
             e.preventDefault()
             editor.commands.focus('end')
           }
         }}
       >
+        <div className="sheet-wrap">
         <div className="sheet" style={{ ...sheetStyle(file.page), zoom: zoom / 100 }}>
           <SheetMargin page={file.page} edge="top" onEdit={() => void headerFooter(session, ask)} />
           <EditorContent editor={editor} />
           <SheetMargin page={file.page} edge="bottom" onEdit={() => void headerFooter(session, ask)} />
+        </div>
+        {lamp && <TypewriterLight editor={editor} />}
         </div>
       </main>
       <footer className="statusbar">

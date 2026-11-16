@@ -6,16 +6,18 @@ interface MenuItemProps {
   shortcut?: string
   /** Set for on/off items; leave undefined for plain actions. */
   checked?: boolean
+  /** One choice of several (with checked): announced as a radio item. */
+  radio?: boolean
   disabled?: boolean
   onSelect: () => void
 }
 
-export function MenuItem({ label, shortcut, checked, disabled, onSelect }: MenuItemProps) {
+export function MenuItem({ label, shortcut, checked, radio, disabled, onSelect }: MenuItemProps) {
   return (
     <button
       type="button"
       className="menu-item"
-      role={checked === undefined ? 'menuitem' : 'menuitemcheckbox'}
+      role={checked === undefined ? 'menuitem' : radio ? 'menuitemradio' : 'menuitemcheckbox'}
       aria-checked={checked}
       disabled={disabled}
       title={tooltip(label, shortcut)}

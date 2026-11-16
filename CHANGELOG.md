@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0
+
+- Dark mode (View menu): Light, Dark, or Match my device. The page goes dark too, with text colors and highlights kept readable; printing and exports stay black on white.
+- Typewriter light (View menu): a soft light on the line being written, the rest of the page in shadow. It follows the cursor and scrolls with the text.
+
 ## 1.0.0
 
 First release. Everything in the v1 plan:

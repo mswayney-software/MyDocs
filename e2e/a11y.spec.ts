@@ -45,7 +45,7 @@ test('the page, with a document using every kind of content', async ({ page }) =
   await scan(page, 'the page with the cursor in a table')
 })
 
-for (const menu of ['File', 'Insert', 'Format', 'Page']) {
+for (const menu of ['File', 'Insert', 'Format', 'Page', 'View']) {
   test(`the ${menu} menu`, async ({ page }) => {
     await page.getByRole('button', { name: menu, exact: true }).click()
     await expect(page.getByRole('menu')).toBeVisible()
@@ -77,6 +77,21 @@ for (const [menu, item, title] of dialogs) {
     await scan(page, `the ${title} dialog`)
   })
 }
+
+test('dark mode: the page, a menu, a dialog and the find bar', async ({ page }) => {
+  await page.getByRole('button', { name: 'View', exact: true }).click()
+  await page.getByRole('menuitemradio', { name: 'Dark', exact: true }).click()
+  await page.keyboard.type('Dark text with a [link]')
+  await scan(page, 'the page in dark mode')
+  await page.getByRole('button', { name: 'File', exact: true }).click()
+  await scan(page, 'the File menu in dark mode')
+  await page.getByRole('menuitem', { name: 'New from template…', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'New from template' })).toBeVisible()
+  await scan(page, 'a dialog in dark mode')
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('ControlOrMeta+h')
+  await scan(page, 'the find bar in dark mode')
+})
 
 test('the find and replace bar', async ({ page }) => {
   await page.keyboard.type('find me')
