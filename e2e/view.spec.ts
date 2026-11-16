@@ -47,54 +47,59 @@ test('"Match my device" follows the device setting as it changes', async ({ page
   await expect.poll(() => theme(page)).toBe('light')
 })
 
-test('the typewriter light follows the line being written and scrolls with the text', async ({ page }) => {
+test('the typewriter light shines up from just below the word being typed and scrolls with the text', async ({ page }) => {
   await pick(page, 'menuitemcheckbox', 'Typewriter light')
   const light = page.locator('.typewriter-light')
   await expect(light).toBeVisible()
   await expect(doc(page)).toBeFocused()
 
-  const lineInLight = async () => {
-    await page.waitForTimeout(300) // the light glides over in 140 ms
-    return page.evaluate(() => {
+  /** Where the LED is, against the word that ends at the cursor (`word` is its text). */
+  const ledUnder = async (word: string) => {
+    await page.waitForTimeout(300) // the light glides over in 120 ms
+    return page.evaluate((length) => {
       const ed = window.__openWriter!
-      const line = ed.view.coordsAtPos(ed.state.selection.head)
-      const band = document.querySelector('.typewriter-light')!.getBoundingClientRect()
-      const page = document.querySelector('.sheet')!.getBoundingClientRect()
+      const head = ed.state.selection.head
+      const caret = ed.view.coordsAtPos(head)
+      const start = ed.view.coordsAtPos(head - length)
+      const led = document.querySelector('.lamp-led')!.getBoundingClientRect()
+      const lineHeight = caret.bottom - caret.top
       return {
-        centered: Math.abs((line.top + line.bottom) / 2 - (band.top + band.bottom) / 2),
-        covers: band.top < line.top && band.bottom > line.bottom,
-        width: Math.abs(band.width - page.width),
+        offCenter: Math.abs((led.left + led.right) / 2 - (start.left + caret.left) / 2),
+        gapBelowLine: led.top - caret.bottom,
+        lineHeight,
       }
-    })
+    }, word.length)
   }
+  const expectUnder = async (word: string) => {
+    const at = await ledUnder(word)
+    expect(at.offCenter).toBeLessThan(2)
+    expect(at.gapBelowLine).toBeGreaterThanOrEqual(0)
+    expect(at.gapBelowLine).toBeLessThan(at.lineHeight * 0.6)
+  }
+
   await page.keyboard.type('First line')
-  let at = await lineInLight()
-  expect(at.covers).toBe(true)
-  expect(at.centered).toBeLessThan(2)
-  expect(at.width).toBeLessThan(1)
+  await expectUnder('line')
+  // It moves along as the word grows and on to the next word.
+  await page.keyboard.type('s of a longer sentence')
+  await expectUnder('sentence')
 
   for (let i = 0; i < 40; i++) await page.keyboard.press('Enter')
   await page.keyboard.type('Far down the page')
-  at = await lineInLight()
-  expect(at.covers).toBe(true)
-  expect(at.centered).toBeLessThan(2)
+  await expectUnder('page')
 
   // Scrolling moves the light with the text, with nothing to recompute.
   await page.locator('.workspace').evaluate((el) => el.scrollBy(0, -200))
-  at = await lineInLight()
-  expect(at.centered).toBeLessThan(2)
+  await expectUnder('page')
 
-  // Zooming keeps it on the line and the width of the page.
+  // Zooming keeps it under the word.
   await page.getByRole('button', { name: 'Zoom in' }).click()
-  at = await lineInLight()
-  expect(at.centered).toBeLessThan(2)
-  expect(at.width).toBeLessThan(1)
+  await expectUnder('page')
 
   // Clicks pass through the light to the text under it.
   await page.locator('.doc p').first().click()
   await page.keyboard.press('End')
   await page.keyboard.type('!')
-  expect(await page.locator('.doc p').first().textContent()).toBe('First line!')
+  expect(await page.locator('.doc p').first().textContent()).toBe('First lines of a longer sentence!')
 
   // Off again, and remembered.
   await pick(page, 'menuitemcheckbox', 'Typewriter light')

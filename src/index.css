@@ -329,31 +329,61 @@ body { background: var(--bg); }
 .sheet-wrap { position: relative; }
 
 /*
- * Typewriter light (View menu): a band of light on the line being written, the rest of the
- * page in shadow. The band's edges fade (--fade, set from the line height), and a spread
- * shadow darkens everything beyond it, clipped to the scrolling page area.
+ * Typewriter light (View menu): one small LED just below the word being typed, its beam
+ * fanning up over the word and the lines above, the rest of the page in shadow.
+ *
+ * .typewriter-light covers the page's whole scrolling area and clips the light to it. Inside,
+ * .lamp-beam is a box twice --reach wide and --reach tall with the LED at the middle of its
+ * bottom edge; TypewriterLight.tsx slides it under the current word with a transform, so moving
+ * the light never repaints anything (that matters in a 50-page paper on a slow laptop). Its
+ * spread shadow darkens everything outside the box; inside, .lamp-shade does the same except
+ * where the beam shines. --depth is how far below the LED the beam fans out from.
  */
+.sheet-wrap { min-height: 100%; }
 .typewriter-light {
-  --dim: rgb(18 16 12 / 0.55);
-  --glow: rgb(255 214 150 / 0.10);
-  position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none;
-  /* Eased fades (not straight lines), so the edge of the light has no visible seam. */
-  --d75: color-mix(in srgb, var(--dim) 75%, transparent);
-  --d40: color-mix(in srgb, var(--dim) 40%, transparent);
-  --d12: color-mix(in srgb, var(--dim) 12%, transparent);
-  background:
-    linear-gradient(to bottom, transparent, var(--glow) 50%, transparent),
-    linear-gradient(to bottom,
-      var(--dim), var(--d75) calc(var(--fade) * 0.3), var(--d40) calc(var(--fade) * 0.6), var(--d12) calc(var(--fade) * 0.85), transparent var(--fade),
-      transparent calc(100% - var(--fade)), var(--d12) calc(100% - var(--fade) * 0.85), var(--d40) calc(100% - var(--fade) * 0.6),
-      var(--d75) calc(100% - var(--fade) * 0.3), var(--dim));
-  box-shadow: 0 0 0 200vmax var(--dim);
-  transition: transform 140ms ease-out, height 140ms ease-out;
+  --dim: rgb(18 16 12 / 0.6);
+  --glow: rgb(255 214 150 / 0.22);
+  --reach: 200px;
+  --depth: 54px;
+  position: absolute; inset: -24px -16px -48px; /* the workspace's padding */
+  z-index: 1; overflow: clip; pointer-events: none;
 }
 :root[data-theme='dark'] .typewriter-light {
-  --dim: rgb(0 0 0 / 0.66);
-  --glow: rgb(255 190 110 / 0.07);
+  --dim: rgb(0 0 0 / 0.72);
+  --glow: rgb(255 186 100 / 0.22);
+}
+.lamp-beam {
+  position: absolute; left: 0; top: 0;
+  width: calc(var(--reach) * 2); height: calc(var(--reach) + 8px);
+  box-shadow: 0 0 0 200vmax var(--dim);
+  will-change: transform;
+  transition: transform 120ms ease-out;
+}
+.lamp-shade, .lamp-glow { position: absolute; inset: 0; }
+/* The beam: fully lit 35 degrees either side of straight up, fading out by 65. */
+.lamp-shade {
+  background: var(--dim);
+  /* Shadow wherever any layer is opaque: outside the beam, far from the LED, or below it. */
+  mask-image:
+    conic-gradient(from -65deg at 50% calc(var(--reach) + var(--depth)), #000 0deg, transparent 30deg, transparent 100deg, #000 130deg),
+    radial-gradient(circle var(--reach) at 50% var(--reach),
+      transparent 0, transparent 22%, rgb(0 0 0 / 0.3) 48%, rgb(0 0 0 / 0.72) 74%, #000 100%),
+    linear-gradient(to bottom, transparent calc(var(--reach) - 3px), #000 calc(var(--reach) + 5px));
+}
+/* Warm light inside the beam, brightest at the LED. */
+.lamp-glow {
+  background: radial-gradient(circle var(--reach) at 50% var(--reach), var(--glow), transparent 70%);
+  mask-image:
+    conic-gradient(from -65deg at 50% calc(var(--reach) + var(--depth)), transparent 0deg, #000 30deg, #000 100deg, transparent 130deg),
+    linear-gradient(to bottom, #000 calc(var(--reach) - 3px), transparent calc(var(--reach) + 5px));
+  mask-composite: intersect;
+}
+.lamp-led {
+  position: absolute; left: calc(50% - 4px); top: calc(var(--reach) - 1px);
+  width: 8px; height: 3px; border-radius: 2px;
+  background: #fff6dc;
+  box-shadow: 0 0 3px 1px rgb(255 214 150 / 0.95), 0 0 10px 3px rgb(255 190 110 / 0.5);
 }
 @media (prefers-reduced-motion: reduce) {
-  .typewriter-light { transition: none; }
+  .lamp-beam { transition: none; }
 }

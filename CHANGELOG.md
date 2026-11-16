@@ -3,7 +3,7 @@
 ## 1.1.0
 
 - Dark mode (View menu): Light, Dark, or Match my device. The page goes dark too, with text colors and highlights kept readable; printing and exports stay black on white.
-- Typewriter light (View menu): a soft light on the line being written, the rest of the page in shadow. It follows the cursor and scrolls with the text.
+- Typewriter light (View menu): a small LED just under the word being typed, its light fanning up over the word and the lines above, the rest of the page in shadow. It follows the word, glides from line to line and scrolls with the text.
 
 ## 1.0.0
 

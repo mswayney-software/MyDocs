@@ -1,10 +1,24 @@
 import type { Editor } from '@tiptap/core'
 import { useEffect, useRef } from 'react'
 
+/** The word the cursor is in (or just after): its start and end positions in the document. */
+function currentWord(editor: Editor) {
+  const { $head, head } = editor.state.selection
+  const off = $head.parentOffset
+  const parent = $head.parent
+  const before = parent.textBetween(Math.max(0, off - 80), off, undefined, '￼')
+  const after = parent.textBetween(off, Math.min(parent.content.size, off + 80), undefined, '￼')
+  return {
+    from: head - (/\S*$/.exec(before)?.[0].length ?? 0),
+    to: head + (/^\S*/.exec(after)?.[0].length ?? 0),
+  }
+}
+
 /**
- * A soft band of light on the line being written, with the rest of the page in shadow, like a
- * lamp over a typewriter. It sits in the page's scrolling area, so it scrolls with the text,
- * and glides to the cursor's line after every change. Screen only: it never prints.
+ * A single small light, like an LED, just below the word being typed, shining up: its beam
+ * fans out over the word and the lines above it, and the rest of the page stays in shadow.
+ * It sits in the page's scrolling area, so it scrolls with the text, and glides from word to
+ * word. Screen only: it never prints.
  */
 export function TypewriterLight({ editor }: { editor: Editor }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -13,27 +27,46 @@ export function TypewriterLight({ editor }: { editor: Editor }) {
     const el = ref.current
     const wrap = el?.parentElement
     const sheet = wrap?.querySelector<HTMLElement>('.sheet')
-    if (!el || !wrap || !sheet) return
+    const beam = el?.querySelector<HTMLElement>('.lamp-beam')
+    if (!el || !wrap || !sheet || !beam) return
     let frame = 0
+    let size = 0 // the beam's reach; it changes only with the line height
+    let lastY = NaN
     const place = () => {
       frame = 0
-      let line: { top: number; bottom: number }
+      const view = editor.view
+      let caret: { left: number; top: number; bottom: number }
+      let left: number
+      let right: number
       try {
-        line = editor.view.coordsAtPos(editor.state.selection.head)
+        caret = view.coordsAtPos(editor.state.selection.head)
+        const word = currentWord(editor)
+        const start = view.coordsAtPos(word.from)
+        const end = view.coordsAtPos(word.to, -1)
+        // A word wrapped across lines: light the part on the cursor's line.
+        const sameLine = (c: { top: number }) => Math.abs(c.top - caret.top) < 2
+        left = sameLine(start) ? start.left : caret.left
+        right = sameLine(end) ? end.left : caret.left
       } catch {
         return // the document is being replaced; the next change places the light
       }
-      const box = wrap.getBoundingClientRect()
-      const page = sheet.getBoundingClientRect()
-      const lineHeight = Math.max(line.bottom - line.top, 8)
-      // The light fades out over a line or two above and below, so the lines around it glow faintly.
-      const fade = lineHeight * 1.6
-      // Whole pixels: at a fractional edge the band and its shadow leave a hairline of light.
-      const px = Math.round
-      el.style.setProperty('--fade', `${px(fade)}px`)
-      el.style.width = `${px(page.width)}px`
-      el.style.height = `${px(lineHeight + 2 * fade)}px`
-      el.style.transform = `translate(${px(page.left - box.left)}px, ${px(line.top - box.top - fade)}px)`
+      const box = el.getBoundingClientRect()
+      const line = Math.max(caret.bottom - caret.top, 8)
+      // The LED sits just under the line. The beam fans out from a few lines below it, so at
+      // the LED it is already about a word wide, and it widens over the lines above.
+      const reach = Math.round(line * 11)
+      if (reach !== size) {
+        size = reach
+        el.style.setProperty('--reach', `${reach}px`)
+        el.style.setProperty('--depth', `${Math.round(line * 3)}px`)
+      }
+      const x = (left + right) / 2 - box.left - reach
+      const y = Math.round(caret.bottom - box.top + Math.max(2, line * 0.2) - reach)
+      // Glide to a new line; along a line, step with the typing. A glide started on every key
+      // costs a slow laptop about 25 ms a keystroke, and each step is only half a letter.
+      beam.style.transition = y === lastY ? 'none' : ''
+      lastY = y
+      beam.style.transform = `translate(${Math.round(x)}px, ${y}px)`
     }
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(place)
@@ -41,7 +74,7 @@ export function TypewriterLight({ editor }: { editor: Editor }) {
     schedule()
     editor.on('transaction', schedule)
     window.addEventListener('resize', schedule)
-    // Zoom, page setup, images loading and fonts arriving all move the line without a change.
+    // Zoom, page setup, images loading and fonts arriving all move the text without a change.
     // The sheet's own size ignores zoom (CSS zoom scales it from outside), so watch the area
     // around it too, which grows with the zoomed page.
     const resized = new ResizeObserver(schedule)
@@ -56,5 +89,13 @@ export function TypewriterLight({ editor }: { editor: Editor }) {
     }
   }, [editor])
 
-  return <div ref={ref} className="typewriter-light" aria-hidden="true" />
+  return (
+    <div ref={ref} className="typewriter-light" aria-hidden="true">
+      <div className="lamp-beam">
+        <div className="lamp-shade" />
+        <div className="lamp-glow" />
+        <div className="lamp-led" />
+      </div>
+    </div>
+  )
 }
