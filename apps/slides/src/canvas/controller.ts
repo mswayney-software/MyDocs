@@ -307,7 +307,7 @@ export class CanvasController {
   async insertPicture(file: File, at?: { x: number; y: number }) {
     this.finishEditing()
     const slideId = this.session.getState().slideId
-    const { blob, width, height } = await shrinkImage(file, MAX_PICTURE_EDGE)
+    const { blob, width, height } = await shrinkImage(file, MAX_PICTURE_EDGE, { stillGif: true })
     const src = await this.session.addPicture(blob)
     const { width: W, height: H } = this.session.getState().deck.size
     const fit = Math.min(1, (W * PICTURE_FIT) / width, (H * PICTURE_FIT) / height)

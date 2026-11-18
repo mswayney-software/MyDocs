@@ -1,4 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { current, deck, drag, makePicture, open, saveAndReopen, scan, screen, selection, toolbar } from './helpers'
 
 /** The pixel size of a stored picture, read back from the deck's media. */
@@ -31,12 +34,30 @@ test('a 12-megapixel photo inserts in under 2 seconds, stored at 1920 px or less
   const photo = await makePicture(page, 4000, 3000)
   expect(photo.length).toBeGreaterThan(1_000_000) // photo-sized, not a tiny test file
 
+  // Timed in the page, from the file being chosen to the picture on the slide: what a student
+  // waits for. (Timing from the test would add the test tool's own file transfer.)
+  await page.evaluate(() => {
+    const w = window as unknown as { chosenAt?: number; placedAt?: number }
+    document.addEventListener('change', () => (w.chosenAt = performance.now()), { capture: true, once: true })
+    const seen = new MutationObserver(() => {
+      if (document.querySelector('.stage .el-image')) {
+        w.placedAt = performance.now()
+        seen.disconnect()
+      }
+    })
+    seen.observe(document.body, { childList: true, subtree: true })
+  })
   const chooser = page.waitForEvent('filechooser')
   await toolbar(page).getByRole('button', { name: 'Picture' }).click()
-  const started = Date.now()
-  await (await chooser).setFiles({ name: 'leaf.jpg', mimeType: 'image/jpeg', buffer: photo })
+  // From a file on disk, as a student's photo arrives.
+  const photoPath = join(mkdtempSync(join(tmpdir(), 'myslides-')), 'leaf.jpg')
+  writeFileSync(photoPath, photo)
+  await (await chooser).setFiles(photoPath)
   await expect(page.locator('.stage .el-image')).toHaveCount(1)
-  const took = Date.now() - started
+  const took = await page.evaluate(() => {
+    const w = window as unknown as { chosenAt: number; placedAt: number }
+    return Math.round(w.placedAt - w.chosenAt)
+  })
   console.log(`12 MP photo inserted in ${took} ms`)
   expect(took).toBeLessThan(2000)
 
@@ -93,6 +114,21 @@ test('a 12-megapixel photo inserts in under 2 seconds, stored at 1920 px or less
   expect(dropped.y + dropped.h / 2).toBeCloseTo(200, -1)
   // The same picture twice is stored once.
   expect(dropped.src).toBe(pasted.src)
+
+  // A GIF comes in as a still picture: its first frame, as PNG.
+  const gif = page.waitForEvent('filechooser')
+  await toolbar(page).getByRole('button', { name: 'Picture' }).click()
+  await (await gif).setFiles({
+    name: 'wave.gif',
+    mimeType: 'image/gif',
+    buffer: Buffer.from('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==', 'base64'),
+  })
+  await expect(page.locator('.stage .el-image')).toHaveCount(4)
+  const still = (await current(page)).elements.at(-1)
+  expect(still.src).toMatch(/\.png$/)
+  expect((await storedSize(page, still.src)).type).toBe('image/png')
+  await page.keyboard.press('Delete')
+  await expect(page.locator('.stage .el-image')).toHaveCount(3)
 
   // Not a picture: a plain message, nothing added.
   const bad = page.waitForEvent('filechooser')

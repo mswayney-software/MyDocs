@@ -15,7 +15,11 @@ export interface ShrunkImage {
   height: number
 }
 
-export async function shrinkImage(file: File, maxEdge: number): Promise<ShrunkImage> {
+/**
+ * `stillGif`: a GIF always becomes a PNG of its first frame, never kept as is (MySlides: an
+ * animated GIF would play on the slide, and decks hold still pictures only).
+ */
+export async function shrinkImage(file: File, maxEdge: number, { stillGif = false } = {}): Promise<ShrunkImage> {
   if (!file.type.startsWith('image/')) throw new Error('not an image')
   const bitmap = await createImageBitmap(file)
   try {
@@ -25,7 +29,7 @@ export async function shrinkImage(file: File, maxEdge: number): Promise<ShrunkIm
     const h = Math.round(height * scale)
 
     const webFormat = /^image\/(png|jpeg|gif|webp)$/.test(file.type)
-    if (scale === 1 && webFormat && file.size <= KEEP_AS_IS_BYTES) {
+    if (scale === 1 && webFormat && file.size <= KEEP_AS_IS_BYTES && !(stillGif && file.type === 'image/gif')) {
       return { blob: file, width: w, height: h }
     }
 
