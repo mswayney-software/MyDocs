@@ -1,6 +1,6 @@
 # MyDocs
 
-A free, open source word processor for high school and college students. It runs entirely on your device: no account, no sign-in, no tracking, and your files never leave your computer. It covers everything a school paper needs, MLA and APA included, and nothing else.
+A free, source-available word processor for high school and college students. It runs entirely on your device: no account, no sign-in, no tracking, and your files never leave your computer. It covers everything a school paper needs, MLA and APA included, and nothing else.
 
 ![MyDocs with a new MLA paper open](docs/screenshot.png)
 
@@ -57,4 +57,6 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code fits together,
 
 ## License
 
-MIT. Third-party licenses are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Allowed dependency licenses: MIT, BSD, Apache-2.0, ISC, SIL OFL, and Zlib (for pako, used by JSZip). One test-only exception: axe-core (MPL-2.0), the accessibility scanner, which never ships in the app.
+[PolyForm Noncommercial 1.0.0](LICENSE): free to use, study, change and share for noncommercial purposes, including personal study and use by schools, charities and government bodies. Commercial use needs separate permission. Versions up to and including 1.1.0 were released under the MIT License, and copies of those keep it.
+
+Third-party licenses are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Allowed dependency licenses: MIT, BSD, Apache-2.0, ISC, SIL OFL, and Zlib (for pako, used by JSZip). One test-only exception: axe-core (MPL-2.0), the accessibility scanner, which never ships in the app.
