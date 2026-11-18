@@ -79,9 +79,12 @@ Results are filled in below.
 | Chrome (desktop, Windows) | Headless `--print-to-pdf` | 3 | 13.333 × 7.5 in, every page | Pass. One slide per page, edge to edge, all four corners intact, text selectable, chart is vector |
 | Edge (desktop, Windows) | Headless `--print-to-pdf` | 3 | 13.333 × 7.5 in, every page | Pass, same as Chrome |
 | Firefox | **Needs a manual run** through the print dialog | | | |
-| Safari | **Needs a manual run** on a Mac or iPad; no Safari on the build machine | | | |
+| Safari (iPhone, iOS) | Print dialog, by the maintainer, 18 Nov 2026 | 3 | **US Letter portrait**: the slide size is ignored | Partial. One slide per page (page breaks work), but each slide sits at the top of a tall page with two thirds left blank. The right edge looks clipped: the right-hand corner squares are missing in the preview. Safari also prints its own header and footer (URL, date, "Page n of 3") |
+| Safari (Mac) | **Not tested**; the iPhone uses the same WebKit engine, so expect the same | | | |
 
 The headless runs show what the engine does with the `@page` rule. They skip the print dialog itself, which is where Firefox has been reported to go wrong (spec, decision 3). To finish the table: open `print-test.html` from the MySlides dev server (`npm run dev -w myslides`, then `/print-test.html`), choose Save as PDF, leave settings at their defaults, and note the page count and page size from the PDF's document properties. Add a screenshot of those properties for each browser.
+
+**What this means for Phase 7.** The fallback cannot assume the browser uses the slide size or a known paper size. In browsers that ignore `@page size`, each slide must scale to the printable width the browser actually gives it (CSS units relative to the page, not fixed inches), so nothing is clipped. Before printing, a plain-words note tells the student to choose Landscape and turn off headers and footers. The Firefox result will confirm whether this applies there too.
 
 Decision 3 is already taken (browser print, Letter fallback where needed), so these results set how the fallback is detected in Phase 7. They do not reopen the decision.
 
@@ -98,4 +101,4 @@ Decision 3 is already taken (browser print, Letter fallback where needed), so th
 | Audit written and reviewed | Written (this file). Waiting on review |
 | MyDocs builds and every existing test passes, no test edited | Unit 55/55. Browser: all 129 functional tests pass (5 skipped, as before). The two typing-speed tests pass when run alone. In two full-suite runs, the dark-mode one failed once at p95 56 ms (limit 50); the 1.1.0 code measures the same on this PC (see above). Lint, typecheck and license check pass. The precache count is unchanged (114 entries). No MyDocs test file was changed |
 | MySlides boots to an empty shell, installs as its own app, zero network requests after first load | Pass in Chromium and Firefox: 12 browser tests including an accessibility scan in light and dark, plus a unit test. Own manifest id, icons and scope; the CSP blocks other sites; offline reload makes no network requests. App download 105 KiB compressed (budget 2 MB) |
-| Print test results in the audit, with a screenshot of the PDF page size per browser | Chrome and Edge done. Firefox and Safari need a manual run (above) |
+| Print test results in the audit, with a screenshot of the PDF page size per browser | Chrome, Edge and iPhone Safari done. Firefox still needs a manual run (above) |
