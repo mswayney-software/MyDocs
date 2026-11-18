@@ -1,4 +1,4 @@
-import { FONTS, HIGHLIGHT_COLORS, TEXT_COLORS } from '@mysuite/core/fonts'
+import { HIGHLIGHT_COLORS, TEXT_COLORS } from '@mysuite/core/fonts'
 import type { Ask } from '@mysuite/core/dialog-types'
 import { ariaShortcut, tooltip } from '@mysuite/core/shortcuts'
 import { SwatchPicker } from '@mysuite/core/ui'
@@ -10,11 +10,13 @@ import {
   TextAlignJustify, TextAlignStart, Trash2, Type, Underline, Undo2,
 } from 'lucide-react'
 import { useSyncExternalStore, type ReactNode } from 'react'
+import { DesignPickers } from './DesignPickers'
 import { editLinkDialog } from './link'
 import type { CanvasController } from '../canvas/controller'
 import type { Theme } from '../deck/schema'
 import { textDefaults } from '../slide/style'
 import { FONT_SIZES, LINE_SPACINGS } from '../text/extensions'
+import { SLIDE_FONTS } from '../text/fonts'
 
 const ICON = { size: 18, strokeWidth: 2, 'aria-hidden': true } as const
 
@@ -113,7 +115,14 @@ export function Toolbar({ controller, ask, theme }: { controller: CanvasControll
             </Btn>
           </span>
         </>
-      ) : null}
+      ) : (
+        <>
+          <Sep />
+          <span className="tb-group" role="group" aria-label="Slide design">
+            <DesignPickers controller={controller} slide={slide} theme={theme} />
+          </span>
+        </>
+      )}
     </div>
   )
 }
@@ -161,7 +170,7 @@ function TextTools({ editor, ask, defaults }: { editor: Editor; ask: Ask; defaul
     },
   })
   const run = () => editor.chain().focus()
-  const fonts = FONTS.some((f) => f.name === s.font) ? FONTS : [...FONTS, { name: s.font, label: s.font }]
+  const fonts = SLIDE_FONTS.some((f) => f.name === s.font) ? SLIDE_FONTS : [...SLIDE_FONTS, { name: s.font, label: s.font }]
   const sizes = (FONT_SIZES as readonly number[]).includes(s.size) ? FONT_SIZES : [...FONT_SIZES, s.size].sort((a, b) => a - b)
 
   const editLink = () => editLinkDialog(editor, ask)

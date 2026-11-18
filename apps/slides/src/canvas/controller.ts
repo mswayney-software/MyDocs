@@ -1,7 +1,9 @@
 import type { Editor } from '@tiptap/core'
-import { contentSlide, newId, textBox } from '../deck/defaults'
+import { newId, textBox } from '../deck/defaults'
+import { applyLayout, layoutById, slideWithLayout } from '../deck/layouts'
 import type { Media } from '../deck/media'
-import type { Element } from '../deck/schema'
+import type { Color, Element, Slide } from '../deck/schema'
+import { themeForDeck } from '../deck/themes'
 import type { DeckSession } from '../deck/session'
 import { bounds, round, snapMove, type Box, type Guides } from './geometry'
 
@@ -345,9 +347,11 @@ export class CanvasController {
   // ---- slides -------------------------------------------------------------------------
 
   /** Add a slide after the current one and go to it. */
-  addSlide() {
+  /** A new slide after the current one: in this layout, or else the current slide's (Title and content after a title slide). */
+  addSlide(layoutId?: string) {
     this.finishEditing()
-    const slide = contentSlide()
+    const current = this.session.currentSlide().layout
+    const slide = slideWithLayout(layoutId ?? (current === 'title' || !layoutById(current) ? 'title-content' : current))
     const at = this.session.getState().slideId
     this.session.update((deck) => {
       const i = deck.slides.findIndex((s) => s.id === at)
@@ -357,6 +361,34 @@ export class CanvasController {
   }
 
   /** Delete a slide. The last one stays: a deck always has a slide. */
+  /** Rearrange the current slide for another layout. One undo step; typed text is never lost. */
+  setLayout(layoutId: string) {
+    this.finishEditing()
+    const id = this.session.getState().slideId
+    this.session.update((deck) => {
+      const i = deck.slides.findIndex((s) => s.id === id)
+      if (i >= 0) deck.slides[i] = applyLayout(deck.slides[i] as Slide, layoutId)
+    })
+    this.set({ selected: [] })
+  }
+
+  /** Restyle the whole deck. One undo step. */
+  setTheme(themeId: string) {
+    this.finishEditing()
+    this.session.update((deck) => {
+      deck.theme = themeForDeck(themeId)
+    })
+  }
+
+  /** The current slide's background: a color, or null for the theme's. One undo step. */
+  setBackground(color: Color) {
+    const id = this.session.getState().slideId
+    this.session.update((deck) => {
+      const slide = deck.slides.find((s) => s.id === id)
+      if (slide) slide.background = color
+    })
+  }
+
   deleteSlide(id: string) {
     const slides = this.session.getState().deck.slides
     if (slides.length <= 1) return
