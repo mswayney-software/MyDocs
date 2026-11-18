@@ -9,6 +9,7 @@
   padding: 4px 12px; font-size: 14px;
 }
 .file-status { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.file-state { color: var(--ink-soft); font-size: 13px; }
 .file-name { margin: 0; font-size: inherit; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40ch; }
 
 .slides-body { flex: 1; display: flex; min-height: 0; }

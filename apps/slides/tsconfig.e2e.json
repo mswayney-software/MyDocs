@@ -13,5 +13,5 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["e2e"]
+  "include": ["e2e", "src/test-hooks.d.ts"]
 }

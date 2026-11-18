@@ -67,6 +67,8 @@ Stays in MyDocs: Word import and export, page setup and print rules, templates, 
 4. **ZIP library:** `jszip` (already shipped) instead of `fflate`.
 5. **Safari:** neither app's CI runs WebKit. Safari results in this audit come from a manual run.
 6. **License:** PolyForm Noncommercial 1.0.0, not "proprietary, closed" and not MIT. The license checker's allowlist for *dependencies* is unchanged.
+7. **Format docs location** (Phase 1): `apps/slides/docs/FILE_FORMAT.md` and `apps/slides/docs/deck.schema.json`, not the repository's `docs/`, which holds MyDocs' own `FILE_FORMAT.md`.
+8. **Deck state** (Phase 1): a plain session class like MyDocs' `DocumentSession`. Zustand and Immer arrive in Phase 2 with deck-level undo, where patches are needed.
 
 ## Print test (decision 3)
 

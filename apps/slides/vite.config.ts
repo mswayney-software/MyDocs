@@ -33,7 +33,8 @@ export default defineConfig({
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },
           { src: 'pwa-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
-        // The deck file handler is added in Phase 1 with the file format (extension still a placeholder).
+        // Installed app opens deck files from the file manager (Chrome and Edge). Extension is a placeholder.
+        file_handlers: [{ action: base, accept: { 'application/vnd.myslides+zip': ['.myslides'] } }],
       },
       workbox: offlineWorkbox(base),
       devOptions: { enabled: false },

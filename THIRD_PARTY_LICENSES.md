@@ -116,6 +116,7 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 | xml | 1.0.1 | MIT |
 | xml-js | 1.6.11 | MIT |
 | xmlbuilder | 10.1.1 | MIT |
+| zod | 4.6.7 | MIT |
 
 ## Development tools (not shipped)
 
