@@ -91,6 +91,43 @@ test('Format menu applies a hanging indent, highlight applies a color, Escape cl
   await expect(page.getByRole('menu', { name: 'Format' })).toBeHidden()
 })
 
+test('Save as (Ctrl+Shift+S) leaves the text alone; strikethrough is Ctrl+Shift+X', async ({ page }) => {
+  // The same file picker in every browser, counted and always cancelled.
+  await page.addInitScript(() => {
+    const w = window as unknown as Record<string, unknown> & { saveAsCalls: number }
+    w.saveAsCalls = 0
+    const cancel = async () => {
+      throw new DOMException('The user aborted a request.', 'AbortError')
+    }
+    w.showOpenFilePicker = cancel
+    w.showSaveFilePicker = async () => {
+      w.saveAsCalls++
+      return cancel()
+    }
+  })
+  await page.goto('/')
+  await expect(doc(page)).toBeFocused()
+  await page.keyboard.type('Keep this word plain.')
+  await page.keyboard.press('ControlOrMeta+a')
+  const strikes = () =>
+    page.evaluate(() => JSON.stringify(window.__openWriter!.getJSON()).split('"type":"strike"').length - 1)
+
+  // Once this both struck the text through and opened Save as.
+  await page.keyboard.press('ControlOrMeta+Shift+s')
+  await expect.poll(() => page.evaluate(() => (window as unknown as { saveAsCalls: number }).saveAsCalls)).toBe(1)
+  expect(await strikes()).toBe(0)
+
+  const button = page.getByRole('button', { name: 'Strikethrough' })
+  await expect(button).toHaveAttribute('aria-keyshortcuts', 'Control+Shift+X')
+  await doc(page).focus()
+  await page.keyboard.press('ControlOrMeta+a')
+  await page.keyboard.press('ControlOrMeta+Shift+x')
+  expect(await strikes()).toBe(1)
+  await expect(button).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('ControlOrMeta+Shift+x')
+  expect(await strikes()).toBe(0)
+})
+
 test('Ctrl+A selects the document even when focus is on the toolbar', async ({ page }) => {
   await page.goto('/')
   await expect(doc(page)).toBeFocused()

@@ -151,7 +151,7 @@ export function Toolbar({ editor, onLink, onFind }: { editor: Editor; onLink: ()
       <Btn label="Underline" shortcut="Mod+U" active={s.underline} onClick={() => run().toggleUnderline().run()}>
         <Underline {...ICON} />
       </Btn>
-      <Btn label="Strikethrough" shortcut="Mod+Shift+S" active={s.strike} onClick={() => run().toggleStrike().run()}>
+      <Btn label="Strikethrough" shortcut="Mod+Shift+X" active={s.strike} onClick={() => run().toggleStrike().run()}>
         <Strikethrough {...ICON} />
       </Btn>
       <Btn

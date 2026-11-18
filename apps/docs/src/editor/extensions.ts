@@ -9,6 +9,7 @@ import { ParagraphFormat } from './paragraph-format'
 import { NormalizedColor, NormalizedFontFamily, NormalizedFontSize, NormalizedHighlight } from './text-style'
 import { DocImage } from './image'
 import { isSafeLink } from './links'
+import { StrikeX } from '@mysuite/core/editor/strike'
 import { PageBreak } from './page-break'
 import { Search } from './search'
 import { Title } from './title'
@@ -37,8 +38,11 @@ export function createExtensions(): Extensions {
       // Word has no phantom empty line after a final heading, and Tiptap's version
       // piled up blank lines each time a style was applied to the whole document.
       trailingNode: false,
+      // Ctrl+Shift+S is Save as; strikethrough is on Ctrl+Shift+X (StrikeX, below).
+      strike: false,
       undoRedo: { depth: 500 },
     }),
+    StrikeX,
     Title,
     TextStyle,
     NormalizedFontFamily,

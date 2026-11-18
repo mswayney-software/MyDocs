@@ -1,7 +1,7 @@
 import { Extension, generateHTML, type Extensions, type JSONContent } from '@tiptap/core'
 import { isSafeLink } from '@mysuite/core/editor/links'
+import { StrikeX } from '@mysuite/core/editor/strike'
 import { NormalizedColor, NormalizedFontFamily, NormalizedFontSize, NormalizedHighlight } from '@mysuite/core/editor/text-style'
-import Strike from '@tiptap/extension-strike'
 import TextAlign from '@tiptap/extension-text-align'
 import { TextStyle } from '@tiptap/extension-text-style'
 import StarterKit from '@tiptap/starter-kit'
@@ -73,7 +73,7 @@ export function slideTextExtensions(): Extensions {
       codeBlock: false,
       horizontalRule: false,
       trailingNode: false,
-      // Ctrl+Shift+S is Save as; strikethrough moves to Ctrl+Shift+X (below).
+      // Ctrl+Shift+S is Save as; strikethrough is on Ctrl+Shift+X (StrikeX, below).
       strike: false,
       link: {
         // On a slide, a click edits; links open from the presenter's screen (Phase 5).
@@ -87,11 +87,7 @@ export function slideTextExtensions(): Extensions {
       },
       undoRedo: { depth: 200 },
     }),
-    Strike.extend({
-      addKeyboardShortcuts() {
-        return { 'Mod-Shift-x': () => this.editor.commands.toggleStrike() }
-      },
-    }),
+    StrikeX,
     TextStyle,
     NormalizedFontFamily,
     NormalizedFontSize,
