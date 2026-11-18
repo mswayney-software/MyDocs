@@ -68,7 +68,15 @@ Stays in MyDocs: Word import and export, page setup and print rules, templates, 
 5. **Safari:** neither app's CI runs WebKit. Safari results in this audit come from a manual run.
 6. **License:** PolyForm Noncommercial 1.0.0, not "proprietary, closed" and not MIT. The license checker's allowlist for *dependencies* is unchanged.
 7. **Format docs location** (Phase 1): `apps/slides/docs/FILE_FORMAT.md` and `apps/slides/docs/deck.schema.json`, not the repository's `docs/`, which holds MyDocs' own `FILE_FORMAT.md`.
-8. **Deck state** (Phase 1): a plain session class like MyDocs' `DocumentSession`. Zustand and Immer arrive in Phase 2 with deck-level undo, where patches are needed.
+8. **Deck state** (Phase 1): a plain session class like MyDocs' `DocumentSession`.
+9. **Undo without Zustand or patches** (Phase 2): decks are immutable (edits go through Immer 11.2.9, MIT), so each undo step keeps the previous deck, and steps share every slide and element that didn't change. Same memory goal as patches, one dependency fewer. Capped at 100 steps; a drag, a resize, or a run of arrow-key nudges is one step.
+10. **Editor sharing** (Phase 2): text styling (`text-style.ts`) and link safety (`links.ts`) moved to `packages/core/src/editor`; MyDocs keeps one-line re-exports at the old paths, so none of its files or tests changed. The paper-specific extensions (paragraph indents and spacing, page break, title, find) stay in MyDocs. MySlides has its own small paragraph line-spacing extension writing the same `lineHeight` attribute as MyDocs.
+11. **Strikethrough is Ctrl+Shift+X in MySlides**, because Ctrl+Shift+S is Save as. See the MyDocs bug below.
+
+## Found in Phase 2
+
+- **MyDocs bug, live today:** Ctrl+Shift+S both strikes through the selected text and opens Save as. The editor's shortcut and the app's Save as share the key, and ProseMirror's handling doesn't stop the app from seeing it. Confirmed in Firefox (the strike lands and the Save as dialog opens) and in Chromium (the strike lands). Not fixed: it changes a MyDocs shortcut, so it waits for a decision.
+- **MyDocs test `rich.spec.ts:115`** (Backspace below a table, Delete above it): failed in 2 of 5 full runs on the current code, in Chromium only, and passed in all 3 runs of the pre-Phase-1 code. It passes 11 of 11 when run on its own, and in a back-to-back comparison both versions passed every run. It is timing-sensitive under load; whether the shared-code changes made it more so is not settled.
 
 ## Print test (decision 3)
 
