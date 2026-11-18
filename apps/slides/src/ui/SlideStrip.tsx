@@ -1,5 +1,8 @@
-import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
+import type { Editor, JSONContent } from '@tiptap/core'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type KeyboardEvent } from 'react'
 import type { CanvasController } from '../canvas/controller'
+import type { Media } from '../deck/media'
+import type { RichText, Slide, Theme } from '../deck/schema'
 import { SlideView } from '../slide/SlideView'
 
 /** Thumbnail width in screen pixels. */
@@ -11,6 +14,7 @@ const THUMB_W = 136
  */
 export function SlideStrip({ controller }: { controller: CanvasController }) {
   const { deck, slideId } = useSyncExternalStore(controller.session.subscribe, controller.session.getState)
+  const { editor, editingId } = useSyncExternalStore(controller.subscribe, controller.getState)
   const media = controller.session.getMedia()
   const [menu, setMenu] = useState<{ id: string; x: number; y: number } | null>(null)
   const list = useRef<HTMLOListElement>(null)
@@ -69,7 +73,11 @@ export function SlideStrip({ controller }: { controller: CanvasController }) {
               }}
             >
               <span className="thumb-scale" style={{ width: deck.size.width, height: deck.size.height, transform: `scale(${scale})` }}>
-                <SlideView slide={s} theme={deck.theme} media={media} />
+                {s.id === slideId && editor && editingId ? (
+                  <LiveSlideView slide={s} theme={deck.theme} media={media} editor={editor} editingId={editingId} />
+                ) : (
+                  <SlideView slide={s} theme={deck.theme} media={media} />
+                )}
               </span>
             </button>
           </li>
@@ -90,6 +98,43 @@ export function SlideStrip({ controller }: { controller: CanvasController }) {
       )}
     </nav>
   )
+}
+
+/** How often, at most, the current slide's thumbnail catches up with typing. */
+const LIVE_THUMB_MS = 150
+
+/** The current slide's thumbnail while a box on it is being edited: shows the text as typed. */
+function LiveSlideView({ slide, theme, media, editor, editingId }: {
+  slide: Slide
+  theme: Theme
+  media: Media
+  editor: Editor
+  editingId: string
+}) {
+  const [typed, setTyped] = useState<JSONContent | null>(null)
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const onUpdate = () => {
+      timer ??= setTimeout(() => {
+        timer = undefined
+        if (!editor.isDestroyed) setTyped(editor.getJSON())
+      }, LIVE_THUMB_MS)
+    }
+    editor.on('update', onUpdate)
+    return () => {
+      editor.off('update', onUpdate)
+      clearTimeout(timer)
+      setTyped(null)
+    }
+  }, [editor])
+  const shown = useMemo(
+    () =>
+      typed
+        ? { ...slide, elements: slide.elements.map((e) => (e.id === editingId && e.type === 'text' ? { ...e, content: typed as RichText } : e)) }
+        : slide,
+    [slide, typed, editingId],
+  )
+  return <SlideView slide={shown} theme={theme} media={media} />
 }
 
 function StripMenu({ x, y, canDelete, onClose, onNew, onDelete }: {

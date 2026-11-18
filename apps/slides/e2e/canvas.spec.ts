@@ -280,6 +280,28 @@ test('typing right after Text box loses no keys', async ({ page }) => {
   expect(els[2].content.content[0].content[0].text).toBe('Mitosis has four phases')
 })
 
+test('the thumbnail follows typing before the box is finished, and only one editor exists', async ({ page }) => {
+  await open(page)
+  const thumbTitle = page.locator('.strip-thumb[aria-current="true"] .el-text').first()
+  await page.keyboard.type('Photosynthesis')
+  // Still editing: nothing committed to the deck yet, but the thumbnail already shows it.
+  await expect(thumbTitle).toHaveText('Photosynthesis')
+  expect((await ui(page)).editingId).not.toBeNull()
+  expect((await current(page)).elements[0].content.content?.[0]?.content).toBeUndefined()
+  await page.keyboard.press('ControlOrMeta+b')
+  await page.keyboard.type(' basics')
+  await expect(thumbTitle.locator('strong')).toHaveText(' basics')
+  // Other slides' thumbnails are untouched by typing on this one.
+  await page.keyboard.press('Escape')
+  await page.keyboard.press('ControlOrMeta+m')
+  await page.locator('.stage').focus()
+  await page.keyboard.press('Tab') // selects the new slide's title; typing starts editing it
+  await page.keyboard.type('Light reactions')
+  await expect(thumbs(page).nth(1).locator('.el-text').first()).toHaveText('Light reactions')
+  await expect(thumbs(page).nth(0).locator('.el-text').first()).toHaveText('Photosynthesis basics')
+  expect(await maxEditors(page)).toBe(1)
+})
+
 test('slide strip: add and delete slides from the menu and the keyboard; the last slide stays', async ({ page }) => {
   await open(page)
   await page.keyboard.press('Escape')
