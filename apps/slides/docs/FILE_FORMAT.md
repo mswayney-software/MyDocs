@@ -97,6 +97,8 @@ Pictures are JPEG, PNG, WebP or GIF (first frame only). SVG is not accepted in v
 | `fill` | color | `null` | Inside color; `null` for none |
 | `stroke` | color | `null` | Outline color; `null` for none |
 | `strokeWidth` | number, 0 to 50 | `2` | Outline width in slide units |
+| `flipH` | boolean, optional | `false` | Lines and arrows only. A line runs from the box's top left corner to its bottom right; `flipH` starts it at the top right instead |
+| `flipV` | boolean, optional | `false` | Lines and arrows only. Starts the line at the bottom instead of the top. With both, bottom right to top left. An arrow's head is at the end |
 
 **`table`**
 

@@ -1,4 +1,5 @@
 import { memo, type CSSProperties } from 'react'
+import { lineEnds } from '../canvas/geometry'
 import type { Media } from '../deck/media'
 import type { Element, ShapeElement, Slide, TableElement, Theme } from '../deck/schema'
 import { isEmptyText, richTextHtml } from '../text/extensions'
@@ -111,41 +112,58 @@ function ShapeView({ el, theme }: { el: ShapeElement; theme: Theme }) {
       break
     case 'line':
     case 'arrow': {
+      const { from, to } = lineEnds(el)
       const head = Math.max(10, sw * 3)
-      const len = Math.hypot(w, h) || 1
-      const end = el.shape === 'arrow' ? { x: w - (w / len) * head * 0.8, y: h - (h / len) * head * 0.8 } : { x: w, y: h }
+      const dx = to.x - from.x
+      const dy = to.y - from.y
+      const len = Math.hypot(dx, dy) || 1
+      // The line stops short of an arrow's tip so the thick stroke doesn't poke through the head.
+      const end = el.shape === 'arrow' ? { x: to.x - (dx / len) * head * 0.8, y: to.y - (dy / len) * head * 0.8 } : to
+      const ink = stroke === 'none' ? theme.colors.text : stroke
       shape = (
         <>
-          <line x1={0} y1={0} x2={end.x} y2={end.y} stroke={stroke === 'none' ? theme.colors.text : stroke} strokeWidth={Math.max(sw, 1)} />
-          {el.shape === 'arrow' && (
-            <polygon
-              points={arrowHead(w, h, head)}
-              fill={stroke === 'none' ? theme.colors.text : stroke}
-              stroke="none"
-            />
-          )}
+          {/* Invisible and wide: what a click on the line lands on. */}
+          <line className="line-hit" x1={from.x} y1={from.y} x2={to.x} y2={to.y} stroke="transparent" strokeWidth={LINE_HIT * 2} />
+          <line x1={from.x} y1={from.y} x2={end.x} y2={end.y} stroke={ink} strokeWidth={Math.max(sw, 1)} />
+          {el.shape === 'arrow' && <polygon points={arrowHead(from, to, head)} fill={ink} stroke="none" />}
         </>
       )
       break
     }
   }
+  // Lines get a margin of empty space around them, so a level or upright line (0 units across)
+  // can still be clicked. The drawing itself stays exactly in the element's box.
+  const pad = el.shape === 'line' || el.shape === 'arrow' ? LINE_HIT : 0
   return (
-    <svg className="el el-shape" data-id={el.id} style={box(el)} width={Math.max(w, 1)} height={Math.max(h, 1)} overflow="visible" aria-hidden="true">
-      <g fill={fill} stroke={stroke} strokeWidth={sw}>{shape}</g>
+    <svg
+      className="el el-shape"
+      data-id={el.id}
+      style={{ left: el.x - pad, top: el.y - pad, width: w + 2 * pad, height: h + 2 * pad }}
+      width={Math.max(w + 2 * pad, 1)}
+      height={Math.max(h + 2 * pad, 1)}
+      overflow="visible"
+      aria-hidden="true"
+    >
+      <g transform={pad ? `translate(${pad} ${pad})` : undefined} fill={fill} stroke={stroke} strokeWidth={sw}>
+        {shape}
+      </g>
     </svg>
   )
 }
 
-/** A filled triangle at the end of a line from (0,0) to (w,h). */
-function arrowHead(w: number, h: number, size: number) {
-  const len = Math.hypot(w, h) || 1
-  const ux = w / len
-  const uy = h / len
-  const bx = w - ux * size
-  const by = h - uy * size
+/** Slide units of clickable space around a line. */
+const LINE_HIT = 10
+
+/** A filled triangle with its tip at the end of a line. */
+function arrowHead(from: { x: number; y: number }, to: { x: number; y: number }, size: number) {
+  const len = Math.hypot(to.x - from.x, to.y - from.y) || 1
+  const ux = (to.x - from.x) / len
+  const uy = (to.y - from.y) / len
+  const bx = to.x - ux * size
+  const by = to.y - uy * size
   const px = -uy * size * 0.5
   const py = ux * size * 0.5
-  return `${w},${h} ${bx + px},${by + py} ${bx - px},${by - py}`
+  return `${to.x},${to.y} ${bx + px},${by + py} ${bx - px},${by - py}`
 }
 
 /** Basic table drawing; its full styling and editing arrive in Phase 6. */

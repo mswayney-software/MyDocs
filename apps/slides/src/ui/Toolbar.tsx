@@ -7,13 +7,15 @@ import { useEditorState } from '@tiptap/react'
 import {
   AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, Baseline, Bold, Highlighter, Italic, Link,
   List, ListIndentDecrease, ListIndentIncrease, ListOrdered, Redo2, SquarePlus, Strikethrough, TextAlignCenter, TextAlignEnd,
-  TextAlignJustify, TextAlignStart, Trash2, Type, Underline, Undo2,
+  ImagePlus, TextAlignJustify, TextAlignStart, Trash2, Type, Underline, Undo2,
 } from 'lucide-react'
 import { useSyncExternalStore, type ReactNode } from 'react'
+import { editAltText } from './alt'
 import { DesignPickers } from './DesignPickers'
+import { ArrangeMenu, ShapeMenu, ShapeStyle } from './ObjectTools'
 import { editLinkDialog } from './link'
 import type { CanvasController } from '../canvas/controller'
-import type { Theme } from '../deck/schema'
+import type { ImageElement, ShapeElement, Theme } from '../deck/schema'
 import { textDefaults } from '../slide/style'
 import { FONT_SIZES, LINE_SPACINGS } from '../text/extensions'
 import { SLIDE_FONTS } from '../text/fonts'
@@ -52,7 +54,13 @@ const Sep = () => <span className="tb-sep" aria-hidden="true" />
  * The one toolbar row. It always offers undo and inserting; it then shows the tools for what is
  * in hand: text formatting while typing, box settings when an element is selected.
  */
-export function Toolbar({ controller, ask, theme }: { controller: CanvasController; ask: Ask; theme: Theme }) {
+export function Toolbar({ controller, ask, theme, onInsertPicture }: {
+  controller: CanvasController
+  ask: Ask
+  theme: Theme
+  /** Pick a picture file and add it (the app reports a file that isn't a picture). */
+  onInsertPicture: () => void
+}) {
   const ui = useSyncExternalStore(controller.subscribe, controller.getState)
   const deck = useSyncExternalStore(controller.session.subscribe, controller.session.getState)
   const slide = controller.session.currentSlide()
@@ -83,6 +91,10 @@ export function Toolbar({ controller, ask, theme }: { controller: CanvasControll
         <Btn label="Text box" onClick={() => controller.insertTextBox()}>
           <Type {...ICON} />
         </Btn>
+        <Btn label="Picture" onClick={onInsertPicture}>
+          <ImagePlus {...ICON} />
+        </Btn>
+        <ShapeMenu controller={controller} />
       </span>
       {ui.editor && editingEl?.type === 'text' ? (
         <TextTools editor={ui.editor} ask={ask} defaults={textDefaults(editingEl.role, theme)} />
@@ -109,7 +121,24 @@ export function Toolbar({ controller, ask, theme }: { controller: CanvasControll
               ))}
             </span>
           )}
+          {selected.every((e) => e.type === 'shape') && (
+            <ShapeStyle controller={controller} shapes={selected as ShapeElement[]} theme={theme} />
+          )}
+          {selected.length === 1 && selected[0].type === 'image' && (
+            <span className="tb-group">
+              <button
+                type="button"
+                className="tb-btn tb-text-btn"
+                title="Alt text: describe the picture for screen readers"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => void editAltText(controller, selected[0] as ImageElement, ask)}
+              >
+                Alt text
+              </button>
+            </span>
+          )}
           <span className="tb-group">
+            <ArrangeMenu controller={controller} selected={selected} />
             <Btn label="Delete" shortcut="Delete" onClick={() => controller.deleteSelected()}>
               <Trash2 {...ICON} />
             </Btn>

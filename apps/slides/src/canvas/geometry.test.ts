@@ -49,6 +49,8 @@ describe('resizing', () => {
   test('keeping proportions follows the edge that moved further', () => {
     expect(resizeBox(b, 'se', 100, 0, { keepRatio: true }).box).toEqual({ x: 100, y: 100, w: 300, h: 150 })
     expect(resizeBox(b, 'nw', -100, 0, { keepRatio: true }).box).toEqual({ x: 0, y: 50, w: 300, h: 150 })
+    // Shrinking by a sideways drag on a corner shrinks in proportion (it used to do nothing).
+    expect(resizeBox(b, 'se', -100, 0, { keepRatio: true }).box).toEqual({ x: 100, y: 100, w: 100, h: 50 })
     expect(resizeBox(b, 'e', 100, 0, { keepRatio: true }).box).toEqual({ x: 100, y: 75, w: 300, h: 150 })
   })
 

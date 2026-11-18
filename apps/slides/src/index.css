@@ -80,6 +80,10 @@
 
 .el-image { object-fit: fill; display: block; }
 .el-shape { overflow: visible; }
+/* A shape is clicked on the shape itself, not anywhere in its box: shapes stacked in a corner
+   stay pickable. Unfilled shapes still count their inside; lines use a wide invisible stroke. */
+.slide-layer .el-shape { pointer-events: none; }
+.slide-layer .el-shape g > * { pointer-events: visible; }
 .el-table { border-collapse: collapse; table-layout: fixed; font-size: 16pt; }
 .el-table td { border: 1px solid #9a9a95; padding: 4px 8px; vertical-align: top; }
 .el-pending, .el-broken {
@@ -109,6 +113,11 @@
 .handle-s { left: 50%; top: 100%; cursor: ns-resize; }
 .handle-sw { left: 0; top: 100%; cursor: nesw-resize; }
 .handle-w { left: 0; top: 50%; cursor: ew-resize; }
+.handle-end { cursor: crosshair; border-radius: 50%; }
+.marquee {
+  position: absolute; pointer-events: none; z-index: 3;
+  border: calc(1px * var(--inv)) solid var(--focus); background: rgb(31 95 209 / 0.08);
+}
 .guide { position: absolute; pointer-events: none; background: #e0457b; z-index: 3; }
 .guide-v { top: 0; bottom: 0; width: calc(1px * var(--inv)); }
 .guide-h { left: 0; right: 0; height: calc(1px * var(--inv)); }
@@ -130,11 +139,15 @@
   border: 2px solid transparent; border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer;
 }
 .design-choice:hover { background: var(--hover); }
-.design-choice[aria-checked="true"] { border-color: var(--focus); }
-.design-choice:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+/* The current choice is filled in; keyboard focus is only a ring, so the two never look alike. */
+.design-choice[aria-checked="true"] { background: var(--pressed); color: var(--pressed-ink); font-weight: 600; }
+.design-choice[aria-checked="true"] .design-preview { box-shadow: 0 0 0 2px var(--pressed-ink); }
+.design-choice:focus-visible { outline: 2px dashed var(--focus); outline-offset: 1px; }
 .design-preview {
   position: relative; display: block; overflow: hidden; border-radius: 2px;
   box-shadow: 0 0 0 1px rgb(0 0 0 / 0.15);
 }
 .design-name { font-size: 12px; }
 .swatches .swatch-heading { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.menu-heading { padding: 6px 8px 2px; font-size: 12px; color: var(--ink-soft); }
+.menu-icon { width: 18px; display: inline-flex; color: var(--ink-soft); }

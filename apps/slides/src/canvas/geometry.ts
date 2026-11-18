@@ -101,8 +101,8 @@ export function resizeBox(
     let h = bottom - top
     const corner = handle.length === 2
     if (corner) {
-      // The edge that moved further, relative to the box, leads.
-      if (w / b.w >= h / b.h) h = w / ratio
+      // The edge that moved further, relative to the box, leads (growing or shrinking).
+      if (Math.abs(w / b.w - 1) >= Math.abs(h / b.h - 1)) h = w / ratio
       else w = h * ratio
     } else if (handle === 'e' || handle === 'w') h = w / ratio
     else w = h * ratio
@@ -128,3 +128,11 @@ export function resizeBox(
 
 /** Slide units are stored with at most two decimals; files stay readable. */
 export const round = (n: number) => Math.round(n * 100) / 100
+
+/** Where a line or arrow starts and ends inside its box (see flipH and flipV in the format doc). */
+export function lineEnds(el: { w: number; h: number; flipH?: boolean; flipV?: boolean }) {
+  return {
+    from: { x: el.flipH ? el.w : 0, y: el.flipV ? el.h : 0 },
+    to: { x: el.flipH ? 0 : el.w, y: el.flipV ? 0 : el.h },
+  }
+}

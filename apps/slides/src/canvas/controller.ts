@@ -2,10 +2,12 @@ import type { Editor } from '@tiptap/core'
 import { newId, textBox } from '../deck/defaults'
 import { applyLayout, layoutById, slideWithLayout } from '../deck/layouts'
 import type { Media } from '../deck/media'
-import type { Color, Element, Slide } from '../deck/schema'
+import type { Color, Element, SHAPES, Slide } from '../deck/schema'
 import { themeForDeck } from '../deck/themes'
 import type { DeckSession } from '../deck/session'
-import { bounds, round, snapMove, type Box, type Guides } from './geometry'
+import { shrinkImage } from '@mysuite/core/images'
+import { align, distribute, restack, type AlignKind, type StackMove } from './arrange'
+import { bounds, MIN_SIZE, round, snapMove, type Box, type Guides } from './geometry'
 
 export interface UiState {
   /** Selected elements on the current slide. */
@@ -17,6 +19,13 @@ export interface UiState {
   /** The live editor while a text box is being edited. */
   editor: Editor | null
 }
+
+/** Pictures are stored at most this many pixels on their long side (spec, decision 5). */
+export const MAX_PICTURE_EDGE = 1920
+/** A new picture fits inside this share of the slide. */
+const PICTURE_FIT = 0.6
+
+type ShapeKind = (typeof SHAPES)[number]
 
 /** Consecutive arrow-key nudges within this long are one undo step. */
 const NUDGE_MERGE_MS = 700
@@ -270,8 +279,8 @@ export class CanvasController {
     this.set({ guides: s.guides.x.length || s.guides.y.length ? s.guides : null })
   }
 
-  /** Resize one element to a new box (the geometry is worked out by the canvas). */
-  resizeTo(id: string, b: Box, guides: Guides) {
+  /** Resize one element to a new box (the geometry is worked out by the canvas). Lines also take their direction. */
+  resizeTo(id: string, b: Box & { flipH?: boolean; flipV?: boolean }, guides: Guides) {
     this.session.beginGesture()
     this.session.update((deck) => {
       const el = deck.slides.find((s) => s.id === this.session.getState().slideId)?.elements.find((e) => e.id === id)
@@ -287,6 +296,128 @@ export class CanvasController {
   cancelDrag() {
     this.session.cancelGesture()
     if (this.state.guides) this.set({ guides: null })
+  }
+
+  // ---- pictures, shapes, arranging ------------------------------------------------------
+
+  /**
+   * Shrink a picture to at most 1920 px on its long side, store it once in the deck, and place
+   * it fitted inside the slide: centered, or around a drop point. Throws if it isn't a picture.
+   */
+  async insertPicture(file: File, at?: { x: number; y: number }) {
+    this.finishEditing()
+    const slideId = this.session.getState().slideId
+    const { blob, width, height } = await shrinkImage(file, MAX_PICTURE_EDGE)
+    const src = await this.session.addPicture(blob)
+    const { width: W, height: H } = this.session.getState().deck.size
+    const fit = Math.min(1, (W * PICTURE_FIT) / width, (H * PICTURE_FIT) / height)
+    const w = Math.max(MIN_SIZE, round(width * fit))
+    const h = Math.max(MIN_SIZE, round(height * fit))
+    const cx = at ? at.x : W / 2
+    const cy = at ? at.y : H / 2
+    const el = {
+      id: newId('e'),
+      type: 'image' as const,
+      x: round(Math.min(Math.max(cx - w / 2, 0), W - w)),
+      y: round(Math.min(Math.max(cy - h / 2, 0), H - h)),
+      w,
+      h,
+      src,
+      alt: '',
+    }
+    this.session.update((deck) => {
+      deck.slides.find((s) => s.id === slideId)?.elements.push(el)
+    })
+    if (this.session.getState().slideId === slideId) this.set({ selected: [el.id] })
+    return el.id
+  }
+
+  /** Add a shape in the middle of the slide, in theme colors, and select it. */
+  insertShape(shape: ShapeKind) {
+    this.finishEditing()
+    const { width: W, height: H } = this.session.getState().deck.size
+    const line = shape === 'line' || shape === 'arrow'
+    const w = shape === 'triangle' ? 240 : 320
+    const h = line ? 0 : 200
+    const el = {
+      id: newId('e'),
+      type: 'shape' as const,
+      shape,
+      x: round((W - w) / 2),
+      y: round((H - h) / 2),
+      w,
+      h,
+      fill: line ? null : ('accent1' as const),
+      stroke: line ? ('text' as const) : null,
+      strokeWidth: line ? 4 : 2,
+    }
+    this.session.update((deck) => {
+      deck.slides.find((s) => s.id === this.session.getState().slideId)?.elements.push(el)
+    })
+    this.set({ selected: [el.id] })
+  }
+
+  /** Fill, outline color or outline width of the selected shapes. One undo step. */
+  setShapeStyle(patch: { fill?: Color; stroke?: Color; strokeWidth?: number }) {
+    this.updateSelected((el) => {
+      if (el.type !== 'shape') return
+      if ('fill' in patch && el.shape !== 'line' && el.shape !== 'arrow') el.fill = patch.fill ?? null
+      if ('stroke' in patch) el.stroke = patch.stroke ?? null
+      if (patch.strokeWidth !== undefined) el.strokeWidth = patch.strokeWidth
+    })
+  }
+
+  /** Alt text of a picture (read aloud by screen readers, kept in the file). */
+  setAlt(id: string, alt: string) {
+    this.session.update((deck) => {
+      const el = deck.slides.find((s) => s.id === this.session.getState().slideId)?.elements.find((e) => e.id === id)
+      if (el && (el.type === 'image' || el.type === 'chart')) el.alt = alt.trim()
+    })
+  }
+
+  /** Align the selection: one item to the slide, several to each other. One undo step. */
+  alignSelected(kind: AlignKind) {
+    this.finishEditing()
+    this.movePositions(align(this.selectedElements(), kind, this.session.getState().deck.size))
+  }
+
+  /** Equal spacing between three or more selected items. One undo step. */
+  distributeSelected(axis: 'horizontal' | 'vertical') {
+    this.finishEditing()
+    this.movePositions(distribute(this.selectedElements(), axis))
+  }
+
+  private movePositions(moves: Map<string, { x: number; y: number }>) {
+    if (!moves.size) return
+    this.updateSelected((el) => {
+      const m = moves.get(el.id)
+      if (m) Object.assign(el, m)
+    })
+  }
+
+  /** Bring forward, send backward, to front or to back. One undo step. */
+  restackSelected(move: StackMove) {
+    if (!this.state.selected.length) return
+    this.finishEditing()
+    const sel = new Set(this.state.selected)
+    const slideId = this.session.getState().slideId
+    const now = this.session.currentSlide().elements
+    const next = restack(now, sel, move)
+    if (next.every((e, i) => e === now[i])) return
+    this.session.update((deck) => {
+      const slide = deck.slides.find((s) => s.id === slideId)
+      if (!slide) return
+      const byId = new Map(slide.elements.map((e) => [e.id, e]))
+      slide.elements = next.map((e) => byId.get(e.id)!)
+    })
+  }
+
+  /** Select everything whose box overlaps a rectangle drawn on the slide. */
+  selectInRect(r: Box, add: boolean) {
+    const hits = this.elements()
+      .filter((e) => e.x < r.x + r.w && e.x + Math.max(e.w, 1) > r.x && e.y < r.y + r.h && e.y + Math.max(e.h, 1) > r.y)
+      .map((e) => e.id)
+    this.select(add ? [...new Set([...this.state.selected, ...hits])] : hits)
   }
 
   setVerticalAlign(v: 'top' | 'middle' | 'bottom') {

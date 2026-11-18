@@ -123,6 +123,12 @@ export const shapeElement = z.looseObject({
   fill: color.default(null),
   stroke: color.default(null),
   strokeWidth: z.number().min(0).max(50).default(2),
+  /**
+   * Lines and arrows run from the top left corner of their box to the bottom right. flipH starts
+   * them at the right instead, flipV at the bottom: together, any direction. Arrows point at the end.
+   */
+  flipH: z.boolean().optional(),
+  flipV: z.boolean().optional(),
 })
 
 const cell = z.looseObject({

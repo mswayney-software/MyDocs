@@ -447,6 +447,12 @@
                       "type": "number",
                       "minimum": 0,
                       "maximum": 50
+                    },
+                    "flipH": {
+                      "type": "boolean"
+                    },
+                    "flipV": {
+                      "type": "boolean"
                     }
                   },
                   "required": [

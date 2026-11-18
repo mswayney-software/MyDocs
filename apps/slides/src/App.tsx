@@ -2,7 +2,8 @@ import { offline } from '@mysuite/core/offline'
 import { ariaShortcut, shortcutLabel, tooltip } from '@mysuite/core/shortcuts'
 import { InstallButton, OfflineStatus, Popover, UpdateButton, useDialogs } from '@mysuite/core/ui'
 import { ChevronDown } from 'lucide-react'
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { pickImageFile } from '@mysuite/core/images'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Canvas } from './canvas/Canvas'
 import { CanvasController } from './canvas/controller'
 import { DeckSession, type SessionState } from './deck/session'
@@ -17,6 +18,7 @@ export default function App() {
   const [dialog, ask] = useDialogs()
   const [session] = useState(() => new DeckSession(ask))
   const [controller] = useState(() => new CanvasController(session))
+  const pendingPaste = useRef(false)
   const state = useSyncExternalStore(session.subscribe, session.getState)
   const ui = useSyncExternalStore(controller.subscribe, controller.getState)
 
@@ -30,6 +32,51 @@ export default function App() {
     }
     return () => session.dispose()
   }, [session, controller])
+
+  // Pictures come from the Picture button, pasting, or dropping a file on the slide.
+  const addPicture = useCallback(
+    async (file: File, at?: { x: number; y: number }) => {
+      try {
+        await controller.insertPicture(file, at)
+      } catch {
+        await ask({
+          title: 'That file can’t be used as a picture',
+          body: 'Use a photo or picture file: JPEG, PNG, WebP or GIF.',
+          buttons: [{ label: 'OK', value: 'ok', primary: true }],
+          cancelValue: 'ok',
+        })
+      }
+    },
+    [controller, ask],
+  )
+  const pickPicture = useCallback(async () => {
+    const file = await pickImageFile()
+    if (file) await addPicture(file)
+  }, [addPicture])
+
+  // Paste: a picture on the clipboard becomes a picture on the slide; otherwise the app's own
+  // copied items are pasted (Ctrl+V on the canvas lets this event through for that reason).
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      // Some browsers list clipboard files under items rather than files.
+      const files = [
+        ...(e.clipboardData?.files ?? []),
+        ...[...(e.clipboardData?.items ?? [])].filter((i) => i.kind === 'file').map((i) => i.getAsFile()),
+      ]
+      const picture = files.find((f): f is File => !!f && f.type.startsWith('image/'))
+      if (picture) {
+        e.preventDefault()
+        void addPicture(picture)
+        return
+      }
+      if (isTyping(e.target)) return
+      e.preventDefault()
+      pendingPaste.current = false
+      controller.paste()
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [controller, addPicture])
 
   // A new deck opens with the cursor ready in the title (spec, UI). Only when a deck is put
   // in place: undoing back to an empty deck must not grab the keyboard.
@@ -113,7 +160,16 @@ export default function App() {
       else if (mod && key === 'a') controller.selectAll()
       else if (mod && key === 'c') controller.copy()
       else if (mod && key === 'x') controller.cut()
-      else if (mod && key === 'v') controller.paste()
+      else if (mod && key === 'v') {
+        // Let the browser's paste event through: it may carry a picture (handled above). If it
+        // doesn't come (some browsers skip it with nothing to type into), paste our own items.
+        pendingPaste.current = true
+        setTimeout(() => {
+          if (pendingPaste.current) controller.paste()
+          pendingPaste.current = false
+        }, 50)
+        return
+      }
       else if (mod && key === 'd') controller.duplicate()
       else if (e.key === 'PageDown') controller.step(1)
       else if (e.key === 'PageUp') controller.step(-1)
@@ -149,12 +205,19 @@ export default function App() {
           <UpdateButton />
           <InstallButton appName="MySlides" />
         </div>
-        <Toolbar controller={controller} ask={ask} theme={state.deck.theme} />
+        <Toolbar controller={controller} ask={ask} theme={state.deck.theme} onInsertPicture={() => void pickPicture()} />
       </header>
       <div className="slides-body">
         <SlideStrip controller={controller} />
         <main className="editor-area" aria-label="Slide editor">
-          <Canvas controller={controller} slide={slide} theme={state.deck.theme} media={session.getMedia()} size={state.deck.size} />
+          <Canvas
+            controller={controller}
+            slide={slide}
+            theme={state.deck.theme}
+            media={session.getMedia()}
+            size={state.deck.size}
+            onDropPicture={(file, at) => void addPicture(file, at)}
+          />
         </main>
       </div>
       <footer className="statusbar">
