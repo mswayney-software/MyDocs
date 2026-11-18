@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Slide print test</title>
+<style>
+  /* What MySlides will use: one 16:9 slide per page, no margin. */
+  @page { size: 13.333in 7.5in; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #ddd; font-family: Arial, Helvetica, sans-serif; color: #1f2933; }
+  .how { max-width: 720px; margin: 24px auto; padding: 16px 20px; background: #fff; border-radius: 8px; line-height: 1.5; }
+  .how h1 { margin-top: 0; font-size: 20px; }
+  .how button { font: inherit; padding: 6px 14px; }
+  .slide {
+    position: relative; width: 13.333in; height: 7.5in; margin: 24px auto; overflow: hidden;
+    background: #fff; border: 4px solid #1f7a8c;
+    break-after: page; page-break-after: always;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .slide:last-child { break-after: auto; page-break-after: auto; }
+  .corner { position: absolute; width: 0.5in; height: 0.5in; background: #e07a5f; }
+  .tl { top: 0; left: 0; } .tr { top: 0; right: 0; } .bl { bottom: 0; left: 0; } .br { bottom: 0; right: 0; }
+  .title { position: absolute; left: 0.8in; top: 0.6in; font-size: 44pt; font-weight: 700; color: #0b3c5d; }
+  .note { position: absolute; left: 0.8in; top: 1.7in; width: 5.6in; font-size: 16pt; line-height: 1.4; }
+  .ruler { position: absolute; left: 0.8in; bottom: 0.8in; width: 10in; height: 0.3in; border: 2px solid #3d405b;
+    background: repeating-linear-gradient(90deg, #3d405b 0 2px, transparent 2px 1in); }
+  .ruler span { position: absolute; right: 0; top: -0.35in; font-size: 11pt; }
+  svg.chart { position: absolute; right: 0.8in; top: 1.6in; width: 5.4in; height: 3.6in; }
+  .tiny { position: absolute; right: 0.8in; bottom: 0.4in; font-size: 6pt; }
+  @media print {
+    html, body { background: #fff; }
+    .how { display: none; }
+    .slide { margin: 0; border-width: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="how">
+  <h1>Slide print test</h1>
+  <p>Print this page with <b>Save as PDF</b> as the destination, and leave every setting at its default. If the
+  dialog offers "Margins", leave it on Default. A browser that honours the slide page size makes a 3-page PDF,
+  <b>13.33 × 7.5 inches</b> per page. Each page shows one slide with all four orange corner squares touching the edges.</p>
+  <p>Check: page count, page size (in the PDF viewer's document properties), whether any corner is cut off,
+  and whether the chart and the tiny text stay sharp at 400 % zoom.</p>
+  <p><button onclick="print()">Print…</button></p>
+</div>
+<!-- Three identical slides, so a stray blank page or a split slide shows up. -->
+<template id="t">
+  <div class="slide">
+    <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+    <div class="title">Slide <span class="n"></span> of 3</div>
+    <div class="note">Each page should hold exactly one slide, edge to edge, at 13.333 × 7.5 inches. The four orange squares touch the page corners.</div>
+    <svg class="chart" viewBox="0 0 540 360" role="img" aria-label="Test bar chart">
+      <line x1="40" y1="320" x2="530" y2="320" stroke="#1f2933" stroke-width="1" />
+      <line x1="40" y1="10" x2="40" y2="320" stroke="#1f2933" stroke-width="1" />
+      <rect x="70" y="250" width="70" height="70" fill="#1f7a8c" />
+      <rect x="190" y="180" width="70" height="140" fill="#e07a5f" />
+      <rect x="310" y="90" width="70" height="230" fill="#81b29a" />
+      <rect x="430" y="30" width="70" height="290" fill="#f2cc8f" />
+      <text x="105" y="345" font-size="14" text-anchor="middle">W1</text>
+      <text x="225" y="345" font-size="14" text-anchor="middle">W2</text>
+      <text x="345" y="345" font-size="14" text-anchor="middle">W3</text>
+      <text x="465" y="345" font-size="14" text-anchor="middle">W4</text>
+    </svg>
+    <div class="ruler"><span>10 inches</span></div>
+    <div class="tiny">6 pt text: zoom in to check it stays sharp, which means it is real text, not a picture.</div>
+  </div>
+</template>
+<script>
+  const t = document.getElementById('t')
+  for (let i = 1; i <= 3; i++) {
+    const s = t.content.cloneNode(true)
+    s.querySelector('.n').textContent = i
+    document.body.append(s)
+  }
+</script>
+</body>
+</html>
