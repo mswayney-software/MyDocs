@@ -20,7 +20,11 @@ npm run test:e2e
 npm run licenses
 ```
 
-All of them must pass. Add tests with the change, in the same commit: a unit test for logic, a browser test (in `e2e/`) for anything a student does.
+All of them must pass. Add tests with the change, in the same commit: a unit test for logic, a browser test (in the app's `e2e/` folder) for anything a student does.
+
+## Layout
+
+MyDocs lives in `apps/docs`, code shared between apps in `packages/core`. A change to `packages/core` must pass every app's tests, not just the one you were working on.
 
 ## Rules
 

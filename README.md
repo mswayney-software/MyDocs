@@ -35,19 +35,21 @@ Requires Node.js 24.
 ```sh
 npm install
 npx playwright install chromium firefox
-npm run dev        # local dev server
-npm run build      # production build in dist/
-npm run preview    # serve the production build (with offline support)
-BASE_PATH=/MyDocs/ npm run build  # build for a subfolder, as GitHub Pages serves it
-npm test           # unit tests (Vitest)
+npm run dev -w mydocs        # local dev server
+npm run build -w mydocs      # production build in apps/docs/dist/
+npm run preview -w mydocs    # serve the production build (with offline support)
+BASE_PATH=/MyDocs/ npm run build -w mydocs  # build for a subfolder, as GitHub Pages serves it
+npm test           # unit tests (Vitest), every app
 npm run test:e2e   # browser tests (Playwright, Chromium and Firefox), accessibility scan, typing speed
 npm run lint       # oxlint
 npm run typecheck  # tsc
 npm run licenses   # check dependency licenses, regenerate THIRD_PARTY_LICENSES.md
-node scripts/fetch-sample-papers.mjs  # real school papers for the Word import tests (optional)
+cd apps/docs && node scripts/fetch-sample-papers.mjs  # real school papers for the Word import tests (optional)
 ```
 
-The Word import tests also run against ten real sample papers from university writing centers, listed with their sources in `e2e/fixtures/sample-papers.json`. They belong to their schools, so they are not in this repository; the fetch script downloads them, and the tests skip any that are missing. Set `EXPORT_OUT=<folder>` when running `e2e/docx.spec.ts` to keep every exported .docx for a look in Word, Google Docs or LibreOffice.
+The repository holds MyDocs in `apps/docs`, code shared between apps in `packages/core`, and a second app in progress in `apps/slides`.
+
+The Word import tests also run against ten real sample papers from university writing centers, listed with their sources in `apps/docs/e2e/fixtures/sample-papers.json`. They belong to their schools, so they are not in this repository; the fetch script downloads them, and the tests skip any that are missing. Set `EXPORT_OUT=<folder>` when running `apps/docs/e2e/docx.spec.ts` to keep every exported .docx for a look in Word, Google Docs or LibreOffice.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code fits together, [docs/FILE_FORMAT.md](docs/FILE_FORMAT.md) for the `.owdoc` format, [docs/ROADMAP.md](docs/ROADMAP.md) for what's next, and [CONTRIBUTING.md](CONTRIBUTING.md) to help.
 

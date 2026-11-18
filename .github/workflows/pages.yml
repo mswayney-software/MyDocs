@@ -33,13 +33,13 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # Pages serves the app from /<repository name>/.
-      - run: npm run build
+      # Pages serves MyDocs from /<repository name>/. MySlides is not published yet.
+      - run: npm run build -w mydocs
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: dist
+          path: apps/docs/dist
       - id: deployment
         uses: actions/deploy-pages@v4

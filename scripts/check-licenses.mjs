@@ -26,13 +26,15 @@ function allowed(expr) {
   return isAllowedId(e)
 }
 
-const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
 const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'))
-const directDev = new Set(Object.keys(pkg.devDependencies ?? {}))
+// The root and each workspace (apps/*, packages/*) list their own dev tools.
+const manifests = Object.entries(lock.packages).filter(([path, info]) => !path.includes('node_modules/') && !info.link)
+const directDev = new Set(manifests.flatMap(([, info]) => Object.keys(info.devDependencies ?? {})))
 
 const rows = []
 for (const [path, info] of Object.entries(lock.packages)) {
-  if (!path) continue
+  // Skip the root, the workspaces themselves (our own code), and the links to them.
+  if (!path.includes('node_modules/') || info.link) continue
   const name = path.slice(path.lastIndexOf('node_modules/') + 13)
   const shipped = !info.dev
   if (!shipped && !(directDev.has(name) && path === `node_modules/${name}`)) continue

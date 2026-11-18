@@ -1,0 +1,143 @@
+/* Shared look for both apps: color tokens (light and dark), base reset, focus ring, dialogs, toolbar buttons, menus, popovers and swatches. */
+
+:root {
+  --bg: #e9e9e6;
+  --sheet: #ffffff;
+  --ink: #1d1d1b;
+  --ink-soft: #5c5c58;
+  --chrome: #f7f7f5;
+  --line: #d4d4cf;
+  --hover: #e6e6e2;
+  --pressed: #d9e3f5;
+  --pressed-ink: #17407e;
+  --focus: #1f5fd1;
+  color-scheme: light;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  color: var(--ink);
+}
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body { background: var(--bg); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+/* Dialogs */
+.dlg {
+  width: min(440px, calc(100vw - 32px)); padding: 20px 20px 16px;
+  border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--sheet);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.25);
+}
+.dlg::backdrop { background: rgb(0 0 0 / 0.3); }
+.dlg-title { margin: 0 0 8px; font-size: 17px; }
+.dlg-body { margin: 0 0 16px; font-size: 14px; line-height: 1.45; color: var(--ink-soft); }
+.dlg-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; font-size: 13px; }
+.dlg-input-row { display: flex; align-items: center; gap: 4px; }
+.dlg-input-row input {
+  flex: 1; height: 32px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; font: inherit; font-size: 14px;
+  background: var(--sheet); color: var(--ink);
+}
+.dlg-suffix { color: var(--ink-soft); }
+.dlg-buttons { display: flex; justify-content: flex-end; gap: 8px; }
+.dlg-btn {
+  height: 32px; padding: 0 14px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--sheet); color: var(--ink); font: inherit; font-size: 14px; cursor: pointer;
+}
+.dlg-btn:hover { background: var(--hover); }
+.dlg-primary { background: var(--focus); border-color: var(--focus); color: #fff; }
+.dlg-primary:hover { background: #1a51b3; }
+/* Toolbar */
+.toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+  background: var(--chrome); border-bottom: 1px solid var(--line);
+  padding: 4px 8px;
+}
+.tb-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 30px; min-width: 28px; padding: 0 3px;
+  border: 0; border-radius: 4px; background: transparent; color: var(--ink);
+  font: inherit; cursor: pointer;
+}
+.tb-btn:hover:not(:disabled) { background: var(--hover); }
+.tb-btn[aria-pressed='true'], .tb-btn[aria-expanded='true'] { background: var(--pressed); color: var(--pressed-ink); }
+.tb-btn:disabled { opacity: 0.35; cursor: default; }
+.tb-sep { width: 1px; height: 20px; margin: 0 3px; background: var(--line); }
+.tb-select {
+  height: 30px; padding: 0 4px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--sheet); color: var(--ink); font: inherit; font-size: 13px;
+}
+
+/* Popovers: menus and swatch pickers */
+.popover { position: relative; }
+.popover-panel {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 10;
+  min-width: 100%; padding: 4px;
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 6px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 0.14);
+}
+.menu-item {
+  display: flex; align-items: center; gap: 6px; width: 100%; min-width: 230px;
+  padding: 6px 8px; border: 0; border-radius: 4px; background: transparent;
+  color: var(--ink); font: inherit; font-size: 14px; text-align: left; cursor: pointer;
+}
+.menu-item:hover, .menu-item:focus-visible { background: var(--hover); outline: none; }
+.menu-check { width: 14px; display: inline-flex; }
+.menu-label { flex: 1; }
+.menu-shortcut { color: var(--ink-soft); font-size: 12px; }
+.menu-sep { height: 1px; margin: 4px 0; background: var(--line); }
+
+.swatch-trigger { display: inline-flex; flex-direction: column; align-items: center; gap: 1px; }
+.swatch-bar { width: 16px; height: 3px; border-radius: 1px; border: 1px solid var(--line); }
+.swatches { display: flex; flex-direction: column; gap: 6px; width: 148px; }
+.swatch-none {
+  padding: 4px 6px; border: 1px solid var(--line); border-radius: 4px;
+  background: var(--sheet); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
+}
+.swatch-none:hover { background: var(--hover); }
+.swatch-grid { display: grid; grid-template-columns: repeat(5, 24px); gap: 6px; }
+.swatch { width: 24px; height: 24px; border: 1px solid rgb(0 0 0 / 0.2); border-radius: 4px; cursor: pointer; }
+.swatch[aria-pressed='true'] { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+
+/* Dialog extras */
+.dlg-fields { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+.dlg-fields .dlg-field { margin-bottom: 0; }
+.dlg-check { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+.menu-item:disabled { opacity: 0.4; cursor: default; }
+.menu-item:disabled:hover { background: transparent; }
+.dlg-fields { flex-direction: row; flex-wrap: wrap; column-gap: 12px; }
+.dlg-fields > * { flex: 1 1 100%; }
+.dlg-fields > .dlg-half { flex: 1 1 calc(50% - 6px); }
+.dlg-select { height: 32px; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); color: var(--ink); font: inherit; font-size: 14px; }
+.dlg-input-row input { min-width: 0; }
+/*
+ * Dark mode. The app's controls get dark colors; the page is turned dark by inverting it
+ * (with hues kept), so any text color or highlight a student picks stays readable, and
+ * images are turned back so photos look right. Screen only: printing is always black on white.
+ */
+:root[data-theme='dark'] {
+  --bg: #131416;
+  --sheet: #2b2c30;
+  --ink: #e8e8e5;
+  --ink-soft: #a9a9a4;
+  --chrome: #1f2023;
+  --line: #43454a;
+  --hover: #37383d;
+  --pressed: #2a3d63;
+  --pressed-ink: #cddcff;
+  --focus: #3b72dd;
+  color-scheme: dark;
+}
+
+/* Install button and status bar extras */
+.topbar-action { margin-left: auto; width: auto; gap: 6px; padding: 0 10px; font-size: 13px; border: 1px solid var(--line); }
+.statusbar { display: flex; align-items: center; justify-content: space-between; }
+.status-right { display: inline-flex; align-items: center; gap: 12px; }
+.status-offline, .status-btn { display: inline-flex; align-items: center; gap: 4px; }
+.status-btn {
+  padding: 1px 8px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--sheet); color: var(--ink); font: inherit; font-size: 12px; cursor: pointer;
+}
+.status-btn:hover { background: var(--hover); }
+
+/* Update and Install sit together at the right of the top bar. */
+.topbar-action ~ .topbar-action { margin-left: 8px; }
+.topbar-update { background: var(--focus); border-color: var(--focus); color: #fff; }
+.topbar-update:hover:not(:disabled) { background: #1a51b3; }
