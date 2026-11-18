@@ -33,10 +33,15 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # Pages serves MyDocs from /<repository name>/. MySlides is not published yet.
+      # Pages serves MyDocs from /<repository name>/ and MySlides from /<repository name>/slides/.
+      # Each has its own service worker; MyDocs' leaves the slides/ folder alone (vite.config.ts).
       - run: npm run build -w mydocs
         env:
           BASE_PATH: /${{ github.event.repository.name }}/
+      - run: npm run build -w myslides
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/slides/
+      - run: cp -r apps/slides/dist apps/docs/dist/slides
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

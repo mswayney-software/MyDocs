@@ -32,8 +32,12 @@ export const contentSecurityPolicy: Plugin = {
     <meta http-equiv="Content-Security-Policy" content="${CSP}" />`),
 }
 
-/** Service worker settings: cache everything on first load, never fetch at runtime. */
-export function offlineWorkbox(base: string) {
+/**
+ * Service worker settings: cache everything on first load, never fetch at runtime.
+ * `otherApps` are paths under `base` that belong to another app with its own service worker
+ * (MySlides at /MyDocs/slides/): this app must not answer their page loads with its own page.
+ */
+export function offlineWorkbox(base: string, otherApps: string[] = []) {
   return {
     // Everything the app needs, fonts included: after the first load nothing comes from the network.
     // Only woff2 fonts: every supported browser uses them, the .woff fallbacks are never requested.
@@ -41,8 +45,11 @@ export function offlineWorkbox(base: string) {
     // The editor bundle is over Workbox's 2 MB default for a single file.
     maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
     navigateFallback: `${base}index.html`,
+    navigateFallbackDenylist: otherApps.map((path) => new RegExp(`^${escapeRegExp(base + path)}`)),
     cleanupOutdatedCaches: true,
     // No runtime caching rules: the app makes no runtime requests.
     runtimeCaching: [],
   }
 }
+
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')

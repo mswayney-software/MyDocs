@@ -9,6 +9,8 @@ import { contentSecurityPolicy, offlineWorkbox } from '@mysuite/core/vite'
  * "/MyDocs/" (set by .github/workflows/pages.yml).
  */
 const base = process.env.BASE_PATH ?? '/'
+/** MySlides is published inside MyDocs' folder, with its own service worker (pages.yml). */
+const MYSLIDES_PATH = 'slides/'
 
 export default defineConfig({
   base,
@@ -39,7 +41,7 @@ export default defineConfig({
           { action: base, accept: { 'application/vnd.mydocs+json': ['.owdoc'] } },
         ],
       },
-      workbox: offlineWorkbox(base),
+      workbox: offlineWorkbox(base, [MYSLIDES_PATH]),
       devOptions: { enabled: false },
     }),
   ],
