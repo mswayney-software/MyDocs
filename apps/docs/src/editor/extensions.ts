@@ -14,6 +14,7 @@ import { PageBreak } from './page-break'
 import { Search } from './search'
 import { Title } from './title'
 import { TableEdges } from './table-edges'
+import { DocumentEdges } from './document-edges'
 import { TrailingParagraph } from './trailing-paragraph'
 
 /** The one extension list used by the app and by every test. */
@@ -62,5 +63,6 @@ export function createExtensions(): Extensions {
     Search,
     TrailingParagraph,
     TableEdges,
+    DocumentEdges,
   ]
 }

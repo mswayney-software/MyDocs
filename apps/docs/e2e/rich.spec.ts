@@ -148,6 +148,32 @@ test('Backspace below a table and Delete above it move into the table and never 
   await saveAndReopen(page)
 })
 
+test('Ctrl+Home and Ctrl+End reach the document edges from inside a table; with Shift they select', async ({ page }) => {
+  await page.keyboard.type('Intro text.')
+  await menu(page, 'Insert', 'Table…')
+  await page.getByRole('dialog', { name: 'Insert table' }).getByRole('button', { name: 'Insert' }).click()
+  await page.keyboard.type('in a cell')
+  const where = () =>
+    page.evaluate(() => {
+      const { selection, doc } = window.__openWriter!.state
+      return { text: selection.$from.parent.textContent, from: selection.from, to: selection.to, size: doc.content.size }
+    })
+  // Once ignored by Chrome inside a table cell: the cursor stayed in the cell.
+  await page.keyboard.press('ControlOrMeta+Home')
+  expect((await where()).text).toBe('Intro text.')
+  expect((await where()).from).toBe(1)
+  await page.keyboard.type('An ')
+  expect(await page.evaluate(() => window.__openWriter!.state.doc.firstChild!.textContent)).toBe('An Intro text.')
+
+  await page.locator('.ProseMirror td').first().click()
+  await page.keyboard.press('ControlOrMeta+End')
+  const end = await where()
+  expect(end.from).toBe(end.size - 1) // the empty line after the table
+  await page.keyboard.press('ControlOrMeta+Shift+Home')
+  const all = await where()
+  expect([all.from, all.to]).toEqual([1, end.size - 1])
+})
+
 test('images: insert from a file (large photos scaled down), paste, align, resize, save and reopen', async ({ page, browserName }) => {
   await page.keyboard.type('Figure 1.')
   // A 3000 x 2000 image is scaled to at most 1600 px and fitted to the page width.
