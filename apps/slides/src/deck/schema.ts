@@ -41,10 +41,22 @@ export const TEXT_MARKS = ['bold', 'italic', 'underline', 'strike', 'textStyle',
 
 const attrs = z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))
 
-const mark = z.looseObject({
-  type: z.enum(TEXT_MARKS),
-  attrs: attrs.optional(),
-})
+/**
+ * Style values (font, color, size) end up in style attributes, so a hand-made file must not
+ * smuggle CSS through them. Link addresses are checked separately, by the link rules.
+ */
+const CSS_BREAKOUT = /[;{}()<>"\\]/
+const mark = z
+  .looseObject({
+    type: z.enum(TEXT_MARKS),
+    attrs: attrs.optional(),
+  })
+  .refine(
+    (m) =>
+      m.type === 'link' ||
+      Object.values(m.attrs ?? {}).every((v) => typeof v !== 'string' || (!CSS_BREAKOUT.test(v) && v.length <= 100)),
+    { message: 'style values must be plain' },
+  )
 
 export interface TextNode {
   type: (typeof TEXT_NODES)[number]

@@ -182,6 +182,18 @@ describe('damaged parts', () => {
     expect(deck.slides[0].elements.map((e) => e.type)).toEqual(['broken', 'broken'])
   })
 
+  test('style values that try to smuggle CSS make the text damaged', () => {
+    const json = JSON.parse(deckToJson(newDeck()))
+    const text = (attrs: Record<string, string>) => ({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: 'x', marks: [{ type: 'textStyle', attrs }] }] }],
+    })
+    json.slides[0].elements[0].content = text({ color: 'red; background: url(https://tracker.example/x.gif)' })
+    json.slides[0].elements[1].content = text({ fontFamily: 'Tinos', fontSize: '24pt', color: '#C00000' })
+    const { deck } = readDeckJson(JSON.stringify(json))
+    expect(deck.slides[0].elements.map((e) => e.type)).toEqual(['broken', 'text'])
+  })
+
   test('bad slide settings reset to defaults; a bad theme falls back to the plain theme', () => {
     const json = JSON.parse(deckToJson(newDeck()))
     json.slides[0].transition = 'spin'

@@ -2,6 +2,7 @@ import { createBackups, HISTORY_INTERVAL_MS, requestPersistentStorage } from '@m
 import type { Ask } from '@mysuite/core/dialog-types'
 import * as files from '@mysuite/core/file-access'
 import { createStore, del, get, keys, set, type UseStore } from 'idb-keyval'
+import { produce, type Draft } from 'immer'
 import { FILE_DESCRIPTION, FILE_EXTENSION, FILE_MIME, mediaPaths, readDeckFile, writeDeckFile } from './container'
 import { newDeck } from './defaults'
 import { addMedia, type Media } from './media'
@@ -35,7 +36,25 @@ export interface SessionState {
   hasFile: boolean
   /** A short message shown next to the file name, such as "Saved". */
   notice: string | null
+  /** Id of the slide being edited. */
+  slideId: string
+  canUndo: boolean
+  canRedo: boolean
+  /** Goes up each time a deck is put in place by New, Open or Restore (not by undo). */
+  generation: number
 }
+
+/** One undo step: the deck as it was, and the slide that was showing. */
+interface HistoryEntry {
+  deck: Deck
+  slideId: string
+}
+
+/**
+ * Undo keeps whole decks, not patches: decks are immutable, so consecutive steps share every
+ * slide and element that did not change, and a step costs only what it changed.
+ */
+export const UNDO_LIMIT = 100
 
 const newId = () => crypto.randomUUID()
 let recoveryChecked = false
@@ -62,11 +81,15 @@ export class DeckSession {
   private askedForPersistence = false
   private state: SessionState
   private listeners = new Set<() => void>()
+  private past: HistoryEntry[] = []
+  private future: HistoryEntry[] = []
+  /** The deck before the drag or resize in progress, if any. */
+  private gesture: HistoryEntry | null = null
   private readonly ask: Ask
 
   constructor(ask: Ask, deck: Deck = newDeck()) {
     this.ask = ask
-    this.state = { deck, fileName: UNTITLED, dirty: false, hasFile: false, notice: null }
+    this.state = { deck, fileName: UNTITLED, dirty: false, hasFile: false, notice: null, slideId: deck.slides[0].id, canUndo: false, canRedo: false, generation: 0 }
     this.savedJson = deckToJson(deck)
   }
 
@@ -119,11 +142,83 @@ export class DeckSession {
 
   // ---- changes ------------------------------------------------------------------------
 
-  /** Change the deck. Counts as an unsaved change and is backed up within a second. */
-  update(change: (deck: Deck) => Deck) {
-    const deck = change(this.state.deck)
-    if (deck === this.state.deck) return
-    this.setState({ deck, dirty: deckToJson(deck) !== this.savedJson })
+  /**
+   * Change the deck: edit the draft in place (Immer) or return a new deck. Each change is one
+   * undo step, counts as unsaved, and is backed up within a second. Changes made during a
+   * gesture (a drag, a resize) are folded into one step when the gesture ends.
+   */
+  update(change: (draft: Draft<Deck>) => Deck | void) {
+    const before = this.state.deck
+    const deck = produce(before, change) as Deck
+    if (deck === before) return
+    if (!this.gesture) this.pushUndo({ deck: before, slideId: this.state.slideId })
+    this.applyDeck(deck, this.state.slideId, !this.gesture)
+  }
+
+  /** Start a drag or resize: what follows until endGesture() is one undo step. */
+  beginGesture() {
+    this.gesture ??= { deck: this.state.deck, slideId: this.state.slideId }
+  }
+
+  endGesture() {
+    const base = this.gesture
+    this.gesture = null
+    if (!base || base.deck === this.state.deck) return
+    this.pushUndo(base)
+    this.applyDeck(this.state.deck, this.state.slideId, true)
+  }
+
+  /** Abandon a gesture (Escape mid-drag): the deck goes back to how it was. */
+  cancelGesture() {
+    const base = this.gesture
+    this.gesture = null
+    if (base && base.deck !== this.state.deck) this.applyDeck(base.deck, base.slideId, true)
+  }
+
+  undo() {
+    if (this.gesture) return
+    const entry = this.past.pop()
+    if (!entry) return
+    this.future.push({ deck: this.state.deck, slideId: this.state.slideId })
+    this.applyDeck(entry.deck, entry.slideId, true)
+  }
+
+  redo() {
+    if (this.gesture) return
+    const entry = this.future.pop()
+    if (!entry) return
+    this.past.push({ deck: this.state.deck, slideId: this.state.slideId })
+    this.applyDeck(entry.deck, entry.slideId, true)
+  }
+
+  /** Show another slide. Not an undo step. */
+  goTo(slideId: string) {
+    if (slideId !== this.state.slideId && this.state.deck.slides.some((s) => s.id === slideId)) this.setState({ slideId })
+  }
+
+  /** The slide being edited. */
+  currentSlide() {
+    return this.state.deck.slides.find((s) => s.id === this.state.slideId) ?? this.state.deck.slides[0]
+  }
+
+  private pushUndo(entry: HistoryEntry) {
+    this.past.push(entry)
+    if (this.past.length > UNDO_LIMIT) this.past.shift()
+    this.future = []
+  }
+
+  /** Put a deck in place. `settled` = not mid-gesture: work out exactly whether it is saved. */
+  private applyDeck(deck: Deck, slideId: string, settled: boolean) {
+    const slide = deck.slides.some((s) => s.id === slideId) ? slideId : deck.slides[0].id
+    this.setState({
+      deck,
+      slideId: slide,
+      // Mid-drag the deck changes every frame; comparing it with the saved file then would
+      // cost more than it tells. It is worked out once the drag ends.
+      dirty: settled ? deckToJson(deck) !== this.savedJson : true,
+      canUndo: this.past.length > 0,
+      canRedo: this.future.length > 0,
+    })
     if (!this.askedForPersistence) {
       this.askedForPersistence = true
       void requestPersistentStorage()
@@ -386,8 +481,16 @@ export class DeckSession {
     this.media = opts.media
     this.backedUpMedia = new Set()
     this.savedJson = opts.saved ? deckToJson(opts.deck) : null
+    // Undo never reaches back into another deck.
+    this.past = []
+    this.future = []
+    this.gesture = null
     this.setState({
       deck: opts.deck,
+      slideId: opts.deck.slides[0].id,
+      canUndo: false,
+      canRedo: false,
+      generation: this.state.generation + 1,
       fileName: opts.fileName,
       dirty: !opts.saved,
       hasFile: opts.hasFile ?? (opts.saved || opts.handle !== null),

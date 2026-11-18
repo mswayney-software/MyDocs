@@ -43,6 +43,26 @@ export function titleSlide(): Slide {
   }
 }
 
+/** Title and content: what New slide adds until Phase 3 brings the layout picker. */
+export function contentSlide(): Slide {
+  return {
+    id: newId('s'),
+    layout: 'title-content',
+    background: null,
+    transition: 'none',
+    notes: '',
+    elements: [
+      { id: newId('e'), type: 'text', role: 'title', x: 80, y: 40, w: 1120, h: 110, verticalAlign: 'bottom', content: emptyText() },
+      { id: newId('e'), type: 'text', role: 'body', x: 80, y: 180, w: 1120, h: 480, verticalAlign: 'top', content: emptyText() },
+    ],
+  }
+}
+
+/** A free text box the student adds, centered on the slide. */
+export function textBox(): Extract<Slide['elements'][number], { type: 'text' }> {
+  return { id: newId('e'), type: 'text', x: 340, y: 310, w: 600, h: 100, verticalAlign: 'top', content: emptyText() }
+}
+
 export function newDeck(now = new Date()): Deck {
   const at = now.toISOString()
   return {

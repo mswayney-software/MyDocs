@@ -11,23 +11,107 @@
 .file-status { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .file-state { color: var(--ink-soft); font-size: 13px; }
 .file-name { margin: 0; font-size: inherit; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40ch; }
+.tb-group { display: inline-flex; align-items: center; gap: 2px; flex-wrap: nowrap; }
+.tb-font { width: 170px; }
+.tb-size { width: 64px; }
+.tb-spacing { width: 64px; }
 
 .slides-body { flex: 1; display: flex; min-height: 0; }
+.editor-area { flex: 1; display: flex; min-width: 0; min-height: 0; }
 
-/* Slide strip: thumbnails down the left. Collapses below 1024 px (spec UI: Width). */
-.slide-strip { width: 168px; flex: none; overflow-y: auto; background: var(--chrome); border-right: 1px solid var(--line); padding: 12px 8px; }
-.slide-strip ol { list-style: none; margin: 0; padding: 0; }
+/* ---- slide strip ---------------------------------------------------------------- */
+
+/* Collapses below 1024 px (spec UI: Width). */
+.slide-strip { width: 184px; flex: none; overflow-y: auto; background: var(--chrome); border-right: 1px solid var(--line); padding: 12px 8px; }
+.slide-strip ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 .slide-strip li { display: flex; gap: 6px; align-items: flex-start; }
-.strip-num { width: 16px; font-size: 12px; color: var(--ink-soft); text-align: right; }
-.strip-thumb { flex: 1; aspect-ratio: 16 / 9; background: #fff; border: 2px solid var(--focus); border-radius: 3px; }
+.strip-num { width: 18px; flex: none; font-size: 12px; color: var(--ink-soft); text-align: right; padding-top: 2px; }
+.strip-thumb {
+  /* Content-box: the slide inside is scaled to exactly the width set, whatever the border. */
+  box-sizing: content-box; position: relative; flex: none; padding: 0; overflow: hidden; cursor: pointer;
+  background: #fff; border: 1px solid var(--line); border-radius: 3px; outline-offset: 2px;
+}
+.strip-thumb[aria-current='true'] { border: 2px solid var(--focus); }
+.thumb-scale { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+.strip-menu { min-width: 180px; }
 @media (max-width: 1023px) { .slide-strip { display: none; } }
 
-/* The slide, centered on a neutral background, always 16:9. */
-.stage { flex: 1; display: grid; place-items: center; padding: 24px; min-width: 0; overflow: auto; }
-.slide {
-  width: min(100%, calc((100vh - 140px) * 16 / 9)); aspect-ratio: 16 / 9;
-  background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(0 0 0 / 0.04);
+/* ---- canvas --------------------------------------------------------------------- */
+
+.stage { flex: 1; display: grid; place-items: center; overflow: hidden; outline: none; min-width: 0; }
+.stage:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
+.slide-frame { position: relative; box-shadow: 0 1px 3px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(0 0 0 / 0.04); }
+.slide-layer { position: absolute; left: 0; top: 0; transform-origin: 0 0; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+/* The slide itself: always its own colors, in dark mode too (they belong to the deck). */
+.slide-surface {
+  position: absolute; inset: 0; overflow: hidden; color-scheme: light;
+  /* A slide looks the same wherever it is placed (the strip puts it inside a button, which
+     brings its own centering and font settings): nothing inherited may reach its text. */
+  text-align: left; text-indent: 0; text-transform: none; text-shadow: none;
+  letter-spacing: normal; word-spacing: normal; line-height: normal; white-space: normal;
+  font: 16px sans-serif; font-kerning: auto; font-synthesis: weight style;
+  font-variant: normal; font-stretch: normal; text-rendering: auto; color: #000;
 }
+.el { position: absolute; box-sizing: border-box; margin: 0; }
+
+.el-text { display: flex; flex-direction: column; padding: 8px 12px; overflow: visible; cursor: default; }
+.el-text > * { width: 100%; }
+.el-live { z-index: 2; cursor: text; user-select: text; -webkit-user-select: text; }
+
+/* Text in a box, while typing and everywhere else alike. The editor's own rules
+   (Tiptap injects them on .ProseMirror) are repeated so static text wraps identically. */
+.slide-text {
+  outline: none;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  -webkit-font-variant-ligatures: none;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0;
+}
+.slide-text p { margin: 0; min-height: 1lh; }
+.slide-text ul, .slide-text ol { margin: 0; padding-left: 1.3em; }
+.slide-text li > p { margin: 0; }
+.slide-text mark { color: inherit; }
+.slide-text a { color: inherit; text-decoration: underline; }
+.el:not(.el-live) .slide-text a { pointer-events: none; }
+.text-hint { color: #8a8a85; font-style: normal; }
+
+.el-image { object-fit: fill; display: block; }
+.el-shape { overflow: visible; }
+.el-table { border-collapse: collapse; table-layout: fixed; font-size: 16pt; }
+.el-table td { border: 1px solid #9a9a95; padding: 4px 8px; vertical-align: top; }
+.el-pending, .el-broken {
+  display: grid; place-items: center; text-align: center; padding: 12px;
+  font: 16px system-ui, sans-serif; color: #4a4a46;
+}
+.el-pending { background: #f1f1ee; border: 1px dashed #9a9a95; }
+.el-broken { background: #e4e4e0; border: 2px dashed #6b6b66; }
+
+/* Selection, handles and guides keep a constant screen size: --inv is 1 / scale. */
+.sel-box {
+  position: absolute; pointer-events: none;
+  outline: calc(2px * var(--inv)) solid var(--focus); outline-offset: calc(1px * var(--inv));
+}
+.sel-editing { outline-style: dashed; }
+.handle {
+  position: absolute; pointer-events: auto;
+  width: calc(10px * var(--inv)); height: calc(10px * var(--inv));
+  margin: calc(-5px * var(--inv)) 0 0 calc(-5px * var(--inv));
+  background: #fff; border: calc(1.5px * var(--inv)) solid var(--focus); border-radius: calc(2px * var(--inv));
+}
+.handle-nw { left: 0; top: 0; cursor: nwse-resize; }
+.handle-n { left: 50%; top: 0; cursor: ns-resize; }
+.handle-ne { left: 100%; top: 0; cursor: nesw-resize; }
+.handle-e { left: 100%; top: 50%; cursor: ew-resize; }
+.handle-se { left: 100%; top: 100%; cursor: nwse-resize; }
+.handle-s { left: 50%; top: 100%; cursor: ns-resize; }
+.handle-sw { left: 0; top: 100%; cursor: nesw-resize; }
+.handle-w { left: 0; top: 50%; cursor: ew-resize; }
+.guide { position: absolute; pointer-events: none; background: #e0457b; z-index: 3; }
+.guide-v { top: 0; bottom: 0; width: calc(1px * var(--inv)); }
+.guide-h { left: 0; right: 0; height: calc(1px * var(--inv)); }
 
 .statusbar {
   display: flex; align-items: center; justify-content: space-between;

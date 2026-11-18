@@ -3,24 +3,41 @@ import { ariaShortcut, shortcutLabel, tooltip } from '@mysuite/core/shortcuts'
 import { InstallButton, OfflineStatus, Popover, UpdateButton, useDialogs } from '@mysuite/core/ui'
 import { ChevronDown } from 'lucide-react'
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { Canvas } from './canvas/Canvas'
+import { CanvasController } from './canvas/controller'
 import { DeckSession, type SessionState } from './deck/session'
+import { SlideStrip } from './ui/SlideStrip'
+import { editLinkDialog } from './ui/link'
+import { Toolbar } from './ui/Toolbar'
 
-/**
- * Phase 1: the deck model and files work end to end (new, open, save, save as, backups,
- * recovery). The slide strip lists the deck's slides; drawing them arrives in Phase 2.
- */
+const isTyping = (t: EventTarget | null) =>
+  t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName))
+
 export default function App() {
   const [dialog, ask] = useDialogs()
   const [session] = useState(() => new DeckSession(ask))
+  const [controller] = useState(() => new CanvasController(session))
   const state = useSyncExternalStore(session.subscribe, session.getState)
+  const ui = useSyncExternalStore(controller.subscribe, controller.getState)
 
   useEffect(() => {
     session.start()
     // A new version may apply by itself only while nothing has been done yet.
     offline.setIdleCheck(() => session.isPristine())
-    if (import.meta.env.VITE_E2E) window.__mySlides = session
+    if (import.meta.env.VITE_E2E) {
+      window.__mySlides = session
+      window.__mySlidesCanvas = controller
+    }
     return () => session.dispose()
-  }, [session])
+  }, [session, controller])
+
+  // A new deck opens with the cursor ready in the title (spec, UI). Only when a deck is put
+  // in place: undoing back to an empty deck must not grab the keyboard.
+  useEffect(() => {
+    if (!session.isPristine()) return
+    const title = session.getState().deck.slides[0].elements.find((e) => e.type === 'text' && e.role === 'title')
+    if (title) controller.startEditing(title.id)
+  }, [session, controller, state.generation])
 
   // Installed app opened with a deck from the file manager (Chrome and Edge).
   useEffect(() => {
@@ -33,51 +50,117 @@ export default function App() {
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      const mod = e.ctrlKey || e.metaKey
-      if (!mod || e.altKey) return
+      if (document.querySelector('dialog[open]')) return
+      const mod = (e.ctrlKey || e.metaKey) && !e.altKey
       const key = e.key.toLowerCase()
-      if (key === 's') {
-        e.preventDefault()
+      const { editingId, editor, selected } = controller.getState()
+
+      // Anywhere, even while typing.
+      if (mod && key === 's') {
+        e.preventDefault() // never the browser's "save this web page"
+        controller.finishEditing()
         void (e.shiftKey ? session.saveAs() : session.save())
-      } else if (key === 'o' && !e.shiftKey) {
-        e.preventDefault()
-        void session.open()
+        return
       }
+      if (mod && !e.shiftKey && key === 'o') {
+        e.preventDefault()
+        controller.finishEditing()
+        void session.open()
+        return
+      }
+      if (mod && !e.shiftKey && key === 'm') {
+        e.preventDefault()
+        controller.addSlide()
+        return
+      }
+
+      // While a text box is being edited, keys belong to the editor (Ctrl+Z included).
+      if (editingId && editor && (e.target as HTMLElement | null)?.closest?.('.ProseMirror')) {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          controller.finishEditing()
+          document.querySelector<HTMLElement>('.stage')?.focus()
+        } else if (mod && !e.shiftKey && key === 'k') {
+          e.preventDefault()
+          void editLinkDialog(editor, ask)
+        }
+        return
+      }
+      // A box is being edited but its editor doesn't have the keyboard yet: the key goes in the box.
+      if (editingId && !mod && e.key.length === 1 && !isTyping(e.target) && controller.typeIntoEditing(e.key)) {
+        e.preventDefault()
+        return
+      }
+      // Undo and redo work from the strip and toolbar too (right after deleting a slide, say).
+      const inChrome = (e.target as HTMLElement | null)?.closest?.('.slide-strip, .toolbar')
+      if (inChrome && !isTyping(e.target) && mod && (key === 'z' || key === 'y')) {
+        e.preventDefault()
+        if (key === 'y' || e.shiftKey) controller.redo()
+        else controller.undo()
+        return
+      }
+      // In the strip, menus, the toolbar's fields: their own keys.
+      if (isTyping(e.target) || (e.target as HTMLElement | null)?.closest?.('.slide-strip, .popover-panel, .toolbar')) return
+
+      const one = selected.length === 1 ? session.currentSlide().elements.find((x) => x.id === selected[0]) : undefined
+      const step = e.shiftKey ? 10 : 1
+      const arrows: Record<string, [number, number]> = {
+        ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step],
+      }
+      let handled = true
+      if (mod && !e.shiftKey && key === 'z') controller.undo()
+      else if (mod && (key === 'y' || (e.shiftKey && key === 'z'))) controller.redo()
+      else if (mod && key === 'a') controller.selectAll()
+      else if (mod && key === 'c') controller.copy()
+      else if (mod && key === 'x') controller.cut()
+      else if (mod && key === 'v') controller.paste()
+      else if (mod && key === 'd') controller.duplicate()
+      else if (e.key === 'PageDown') controller.step(1)
+      else if (e.key === 'PageUp') controller.step(-1)
+      else if (!selected.length) handled = false
+      else if (e.key in arrows && !mod) controller.nudge(...arrows[e.key])
+      else if (e.key === 'Delete' || e.key === 'Backspace') controller.deleteSelected()
+      else if (e.key === 'Escape') controller.clearSelection()
+      else if ((e.key === 'Enter' || e.key === 'F2') && one?.type === 'text') controller.startEditing(one.id, 'end')
+      else if (e.key === 'Tab' && (e.target as HTMLElement | null)?.classList?.contains('stage')) controller.cycle(e.shiftKey ? -1 : 1)
+      // Typing a letter on a selected text box starts editing it, with that letter.
+      else if (one?.type === 'text' && !mod && e.key.length === 1) controller.startEditing(one.id, { char: e.key })
+      else handled = false
+      if (!handled && e.key === 'Tab' && (e.target as HTMLElement | null)?.classList?.contains('stage') && !e.shiftKey) {
+        controller.cycle(1)
+        handled = true
+      }
+      if (handled) e.preventDefault()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [session])
+  }, [session, controller, ask])
 
-  const slides = state.deck.slides
+  const slide = session.currentSlide()
+  const index = state.deck.slides.indexOf(slide)
   return (
     <div className="app">
-      <header className="chrome topbar">
-        <FileStatus state={state} />
-        <nav className="menubar" aria-label="Menus">
-          <FileMenu session={session} />
-        </nav>
-        <UpdateButton />
-        <InstallButton appName="MySlides" />
+      <header className="chrome">
+        <div className="topbar">
+          <FileStatus state={state} />
+          <nav className="menubar" aria-label="Menus">
+            <FileMenu session={session} controller={controller} />
+          </nav>
+          <UpdateButton />
+          <InstallButton appName="MySlides" />
+        </div>
+        <Toolbar controller={controller} ask={ask} theme={state.deck.theme} />
       </header>
       <div className="slides-body">
-        <nav className="slide-strip" aria-label="Slides">
-          <ol>
-            {slides.map((s, i) => (
-              <li key={s.id}>
-                <span className="strip-num" aria-hidden="true">{i + 1}</span>
-                <span className="strip-thumb" aria-hidden="true" />
-                <span className="sr-only">Slide {i + 1}</span>
-              </li>
-            ))}
-          </ol>
-        </nav>
-        <main className="stage" aria-label="Slide editor">
-          <div className="slide" role="img" aria-label="Slide 1" />
+        <SlideStrip controller={controller} />
+        <main className="editor-area" aria-label="Slide editor">
+          <Canvas controller={controller} slide={slide} theme={state.deck.theme} media={session.getMedia()} size={state.deck.size} />
         </main>
       </div>
       <footer className="statusbar">
         <span className="status-left">
-          MySlides · Slide 1 of {slides.length}
+          MySlides · Slide {index + 1} of {state.deck.slides.length}
+          {ui.selected.length > 1 ? ` · ${ui.selected.length} selected` : ''}
         </span>
         <OfflineStatus />
       </footer>
@@ -124,7 +207,7 @@ function Item({ label, shortcut, onSelect }: { label: string; shortcut?: string;
   )
 }
 
-function FileMenu({ session }: { session: DeckSession }) {
+function FileMenu({ session, controller }: { session: DeckSession; controller: CanvasController }) {
   return (
     <Popover
       menu
@@ -137,8 +220,10 @@ function FileMenu({ session }: { session: DeckSession }) {
       }
     >
       {(close) => {
+        // Text being typed goes into the deck before any file action.
         const pick = (fn: () => Promise<unknown>) => () => {
           close()
+          controller.finishEditing()
           void fn()
         }
         return (

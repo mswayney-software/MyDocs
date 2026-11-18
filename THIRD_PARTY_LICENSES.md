@@ -68,6 +68,7 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 | hash.js | 1.1.7 | MIT |
 | idb-keyval | 6.3.0 | Apache-2.0 |
 | immediate | 3.0.6 | MIT |
+| immer | 11.2.9 | MIT |
 | inherits | 2.0.4 | ISC |
 | isarray | 1.0.0 | MIT |
 | jszip | 3.10.2 | (MIT OR GPL-3.0-or-later) |

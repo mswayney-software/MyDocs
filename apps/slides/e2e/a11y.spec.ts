@@ -13,6 +13,31 @@ async function scan(page: Page, what: string) {
   expect(problems, `accessibility problems in ${what}`).toEqual([])
 }
 
+test('editing text, a selected box, the slide menu, and the link dialog', async ({ page }) => {
+  await page.goto('/')
+  const live = page.locator('.el-live .ProseMirror')
+  await expect(live).toBeFocused()
+  await page.keyboard.type('Cell Division')
+  await scan(page, 'the slide while typing in the title, with the text tools showing')
+
+  await page.keyboard.press('ControlOrMeta+a')
+  await page.keyboard.press('ControlOrMeta+k')
+  await expect(page.getByRole('dialog', { name: 'Add link' })).toBeVisible()
+  await scan(page, 'the link dialog')
+  await page.keyboard.press('Escape')
+
+  await live.press('Escape')
+  await page.keyboard.press('ControlOrMeta+m')
+  await page.locator('.stage').focus()
+  await page.keyboard.press('Tab')
+  await expect(page.locator('.sel-box')).toHaveCount(1)
+  await scan(page, 'a selected box with its handles and box tools')
+
+  await page.locator('.strip-thumb').first().click({ button: 'right' })
+  await expect(page.getByRole('menu', { name: 'Slide' })).toBeVisible()
+  await scan(page, 'the slide menu in the strip')
+})
+
 for (const theme of ['light', 'dark'] as const) {
   test(`the empty shell (${theme})`, async ({ page }) => {
     await page.addInitScript((t) => localStorage.setItem('mydocs:theme', t), theme)

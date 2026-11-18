@@ -1,8 +1,10 @@
+import type { CanvasController } from './canvas/controller'
 import type { DeckSession } from './deck/session'
 
 declare global {
   interface Window {
-    /** Test hook, only present in builds made with `--mode e2e`. */
+    /** Test hooks, only present in builds made with `--mode e2e`. */
     __mySlides?: DeckSession
+    __mySlidesCanvas?: CanvasController
   }
 }
