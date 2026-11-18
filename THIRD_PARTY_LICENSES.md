@@ -12,7 +12,9 @@ Allowed: MIT, BSD, Apache-2.0, ISC, SIL OFL (plus equivalent permissive licenses
 | @floating-ui/dom | 1.8.0 | MIT |
 | @floating-ui/utils | 0.2.12 | MIT |
 | @fontsource/arimo | 5.3.0 | OFL-1.1 |
+| @fontsource/atkinson-hyperlegible | 5.3.0 | OFL-1.1 |
 | @fontsource/carlito | 5.3.0 | OFL-1.1 |
+| @fontsource/lora | 5.3.0 | OFL-1.1 |
 | @fontsource/tinos | 5.3.0 | OFL-1.1 |
 | @tiptap/core | 3.34.0 | MIT |
 | @tiptap/extension-blockquote | 3.34.0 | MIT |
