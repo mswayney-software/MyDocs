@@ -132,3 +132,15 @@ export async function exportFile(
     throw err
   }
 }
+
+/** Strip characters Windows, macOS and ChromeOS refuse in file names. */
+export function safeFileName(name: string, fallback: string): string {
+  // eslint-disable-next-line no-control-regex -- control characters are exactly what must go
+  const cleaned = name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').trim().replace(/\.+$/, '')
+  return cleaned || fallback
+}
+
+/** "Essay.owdoc" -> "Essay": the file name without our extension. */
+export function baseName(fileName: string, extension: string): string {
+  return fileName.toLowerCase().endsWith(extension) ? fileName.slice(0, -extension.length) : fileName
+}

@@ -68,6 +68,19 @@ export function createBackups({ database, lockPrefix: LOCK_PREFIX }: BackupNames
     return ((await get(`hist:${id}`, db())) as HistoryEntry[] | undefined) ?? []
   }
 
+  /**
+   * Every backup still kept (latest and history, for every file). Lets an app find which of
+   * its separately stored pieces (such as pictures) no backup points at any more.
+   */
+  async function allBackupData(): Promise<string[]> {
+    const out: string[] = []
+    for (const [key, value] of await entries(db())) {
+      if (String(key).startsWith('snap:')) out.push((value as Snapshot).data)
+      else if (String(key).startsWith('hist:')) out.push(...(value as HistoryEntry[]).map((h) => h.data))
+    }
+    return out
+  }
+
   async function deleteDocument(id: string): Promise<void> {
     await Promise.all([del(`snap:${id}`, db()), del(`hist:${id}`, db())])
   }
@@ -107,7 +120,7 @@ export function createBackups({ database, lockPrefix: LOCK_PREFIX }: BackupNames
     )
   }
 
-  return { writeSnapshot, appendHistory, readHistory, deleteDocument, findRecoverable, holdLock }
+  return { writeSnapshot, appendHistory, readHistory, allBackupData, deleteDocument, findRecoverable, holdLock }
 }
 
 /** Ask the browser not to evict our backups under storage pressure. Best effort. */

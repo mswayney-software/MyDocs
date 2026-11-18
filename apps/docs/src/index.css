@@ -24,8 +24,6 @@
 .file-name { margin: 0; font-size: inherit; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40ch; }
 .file-state { color: var(--ink-soft); font-size: 13px; }
 
-.menubar { display: flex; gap: 2px; }
-.menubar-item > .tb-btn { width: auto; padding: 0 8px; gap: 2px; font-size: 14px; }
 
 .tb-style { width: 110px; }
 .tb-font { width: 170px; }

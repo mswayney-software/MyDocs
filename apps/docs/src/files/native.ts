@@ -1,5 +1,6 @@
 import type { JSONContent } from '@tiptap/core'
 import { Node as PMNode, type Schema } from '@tiptap/pm/model'
+import { baseName as coreBaseName, safeFileName as coreSafeFileName } from '@mysuite/core/file-access'
 import { canonicalFont } from '@mysuite/core/fonts'
 import { isEmbeddedImage } from '../editor/image'
 
@@ -155,16 +156,10 @@ export function readPage(raw: unknown): PageSettings {
 export const oneLine = (s: string) => s.replace(/[\r\n\t]+/g, ' ').slice(0, 200)
 
 /** "Essay.owdoc" -> "Essay". */
-export function baseName(fileName: string): string {
-  return fileName.toLowerCase().endsWith(FILE_EXTENSION) ? fileName.slice(0, -FILE_EXTENSION.length) : fileName
-}
+export const baseName = (fileName: string) => coreBaseName(fileName, FILE_EXTENSION)
 
 /** Strip characters Windows, macOS and ChromeOS refuse in file names. */
-export function safeFileName(name: string): string {
-  // eslint-disable-next-line no-control-regex -- control characters are exactly what must go
-  const cleaned = name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '').trim().replace(/\.+$/, '')
-  return cleaned || 'Untitled document'
-}
+export const safeFileName = (name: string) => coreSafeFileName(name, 'Untitled document')
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v)

@@ -43,6 +43,8 @@ body { background: var(--bg); }
 .dlg-btn:hover { background: var(--hover); }
 .dlg-primary { background: var(--focus); border-color: var(--focus); color: #fff; }
 .dlg-primary:hover { background: #1a51b3; }
+.menubar { display: flex; gap: 2px; }
+.menubar-item > .tb-btn { width: auto; padding: 0 8px; gap: 2px; font-size: 14px; }
 /* Toolbar */
 .toolbar {
   display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
