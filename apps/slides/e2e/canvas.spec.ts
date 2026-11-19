@@ -73,13 +73,14 @@ test('build three slides with formatted text, move and resize a box, then undo e
 
   // Move it 200 units right, then resize from the bottom-right corner.
   const start = await screen(page, box.x + box.w / 2, box.y + box.h / 2)
-  const end = await screen(page, box.x + box.w / 2 + 200, box.y + box.h / 2 + 37)
+  // (Far enough from the slide's center and edges that nothing snaps, at any canvas size.)
+  const end = await screen(page, box.x + box.w / 2 + 200, box.y + box.h / 2 + 80)
   await drag(page, start, end)
   // Mouse positions are whole screen pixels: allow one pixel's worth of slide units.
   const px = 1 / start.scale
   let moved = (await current(page)).elements[2]
   expect(Math.abs(moved.x - (box.x + 200))).toBeLessThanOrEqual(px)
-  expect(Math.abs(moved.y - (box.y + 37))).toBeLessThanOrEqual(px)
+  expect(Math.abs(moved.y - (box.y + 80))).toBeLessThanOrEqual(px)
   const corner = await screen(page, moved.x + moved.w, moved.y + moved.h)
   await drag(page, corner, { x: corner.x + 60 * corner.scale, y: corner.y + 50 * corner.scale })
   const resized = (await current(page)).elements[2]

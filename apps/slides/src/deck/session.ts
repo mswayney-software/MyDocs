@@ -179,7 +179,8 @@ export class DeckSession {
     if (this.gesture) return
     const entry = this.past.pop()
     if (!entry) return
-    this.future.push({ deck: this.state.deck, slideId: this.state.slideId })
+    // Redo shows the slide the change was made on, as undo does.
+    this.future.push({ deck: this.state.deck, slideId: entry.slideId })
     this.applyDeck(entry.deck, entry.slideId, true)
   }
 

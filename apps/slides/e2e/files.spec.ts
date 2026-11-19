@@ -142,7 +142,7 @@ test.describe('crash recovery', () => {
       return blob ? btoa(String.fromCharCode(...new Uint8Array(await blob.arrayBuffer()))) : null
     })
     expect(png).toBe(PNG_BASE64)
-    await expect(again.getByRole('navigation', { name: 'Slides' }).getByRole('listitem')).toHaveCount(2)
+    await expect(again.getByRole('navigation', { name: 'Slides' }).getByRole('option')).toHaveCount(2)
   })
 
   test('Escape keeps a backup for later; Discard removes it for good', async ({ page, context, browserName }) => {
@@ -321,11 +321,11 @@ test('New with unsaved changes asks first, and Cancel keeps the deck', async ({ 
   await page.getByRole('menuitem', { name: 'New', exact: true }).click()
   const ask = page.getByRole('dialog', { name: 'Save changes to "Untitled deck"?' })
   await ask.getByRole('button', { name: 'Cancel' }).click()
-  await expect(page.getByRole('navigation', { name: 'Slides' }).getByRole('listitem')).toHaveCount(2)
+  await expect(page.getByRole('navigation', { name: 'Slides' }).getByRole('option')).toHaveCount(2)
 
   await page.getByRole('button', { name: 'File', exact: true }).click()
   await page.getByRole('menuitem', { name: 'New', exact: true }).click()
   await page.getByRole('dialog').getByRole('button', { name: 'Don’t save' }).click()
-  await expect(page.getByRole('navigation', { name: 'Slides' }).getByRole('listitem')).toHaveCount(1)
+  await expect(page.getByRole('navigation', { name: 'Slides' }).getByRole('option')).toHaveCount(1)
   await expect(status(page)).toHaveText('')
 })

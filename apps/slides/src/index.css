@@ -22,10 +22,50 @@
 /* ---- slide strip ---------------------------------------------------------------- */
 
 /* Collapses below 1024 px (spec UI: Width). */
-.slide-strip { width: 184px; flex: none; overflow-y: auto; background: var(--chrome); border-right: 1px solid var(--line); padding: 12px 8px; }
-.slide-strip ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.slide-strip li { display: flex; gap: 6px; align-items: flex-start; }
+.slide-strip { width: 184px; flex: none; display: flex; background: var(--chrome); border-right: 1px solid var(--line); }
+@media (max-width: 1023px) { .slide-strip { display: none; } }
+
+/* The strip and the sorter: a scroll area holding only the thumbnails on screen, each placed
+   by its index (every thumbnail is the same size). */
+.grid-scroll { flex: 1; position: relative; overflow-y: auto; overflow-x: hidden; min-height: 0; }
+.grid-list { position: relative; outline: none; }
+.grid-cell { position: absolute; left: 0; top: 0; display: flex; gap: 6px; align-items: flex-start; contain: layout style; }
+.grid-cell.is-dragged { opacity: 0.4; }
 .strip-num { width: 18px; flex: none; font-size: 12px; color: var(--ink-soft); text-align: right; padding-top: 2px; }
+.grid-sorter .grid-cell { flex-direction: column; align-items: center; gap: 4px; }
+.sorter-num { font-size: 13px; color: var(--ink-soft); }
+.strip-thumb[aria-selected='true'] { border-color: var(--focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 35%, transparent); }
+.drop-marker { position: absolute; left: 0; top: 0; height: 4px; border-radius: 2px; background: var(--focus); pointer-events: none; z-index: 2; }
+.drop-marker.is-vertical { width: 4px; }
+
+.sorter-body { flex-direction: column; background: var(--bg); }
+.sorter { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.sorter-bar { border-bottom: 1px solid var(--line); }
+.sorter-count { margin-left: auto; margin-right: 12px; font-size: 13px; color: var(--ink-soft); }
+.tb-text { width: auto; gap: 6px; padding: 0 10px; }
+
+.status-right { display: inline-flex; align-items: center; gap: 12px; }
+.status-btn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid transparent; border-radius: 4px;
+  background: none; color: inherit; font: inherit; cursor: pointer;
+}
+.status-btn:hover { background: var(--hover); }
+.status-btn[aria-pressed='true'] { border-color: var(--line); background: var(--pressed); color: var(--pressed-ink); }
+
+/* ---- speaker notes -------------------------------------------------------------- */
+
+.editor-area { flex-direction: column; }
+.notes-pane { flex: none; display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--chrome); }
+.notes-toggle {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; margin: 2px 6px; padding: 2px 8px;
+  border: 0; border-radius: 4px; background: none; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
+}
+.notes-toggle:hover { background: var(--hover); }
+.notes-text {
+  height: 96px; margin: 0 12px 10px; padding: 8px 10px; resize: vertical; min-height: 48px; max-height: 40vh;
+  border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); color: var(--ink);
+  font: 15px/1.45 'Atkinson Hyperlegible', sans-serif;
+}
 .strip-thumb {
   /* Content-box: the slide inside is scaled to exactly the width set, whatever the border. */
   box-sizing: content-box; position: relative; flex: none; padding: 0; overflow: hidden; cursor: pointer;
@@ -34,7 +74,6 @@
 .strip-thumb[aria-current='true'] { border: 2px solid var(--focus); }
 .thumb-scale { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
 .strip-menu { min-width: 180px; }
-@media (max-width: 1023px) { .slide-strip { display: none; } }
 
 /* ---- canvas --------------------------------------------------------------------- */
 

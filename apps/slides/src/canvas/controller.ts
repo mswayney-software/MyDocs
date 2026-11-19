@@ -6,6 +6,7 @@ import type { Color, Element, SHAPES, Slide } from '../deck/schema'
 import { themeForDeck } from '../deck/themes'
 import type { DeckSession } from '../deck/session'
 import { shrinkImage } from '@mysuite/core/images'
+import { copySlide, gapForStep, moveToGap, rangeIds, sameOrder } from '../sorter/order'
 import { align, distribute, restack, type AlignKind, type StackMove } from './arrange'
 import { bounds, MIN_SIZE, round, snapMove, type Box, type Guides } from './geometry'
 
@@ -18,6 +19,11 @@ export interface UiState {
   guides: Guides | null
   /** The live editor while a text box is being edited. */
   editor: Editor | null
+  /**
+   * Slides picked in the strip or the sorter, in deck order. Always holds the current slide:
+   * slide actions (duplicate, delete, move) act on these.
+   */
+  slides: string[]
 }
 
 /** Pictures are stored at most this many pixels on their long side (spec, decision 5). */
@@ -29,6 +35,8 @@ type ShapeKind = (typeof SHAPES)[number]
 
 /** Consecutive arrow-key nudges within this long are one undo step. */
 const NUDGE_MERGE_MS = 700
+/** Typing in the notes with pauses shorter than this is one undo step. */
+export const NOTES_MERGE_MS = 1000
 /** Each paste lands this far from the last, so copies don't hide each other. */
 const PASTE_OFFSET = 20
 /** Snap distance in screen pixels (converted to slide units by the canvas scale). */
@@ -46,7 +54,8 @@ interface Clip {
  * text to the deck as one undo step and lets it go.
  */
 export class CanvasController {
-  private state: UiState = { selected: [], editingId: null, guides: null, editor: null }
+  private state: UiState
+  private notesTimer: ReturnType<typeof setTimeout> | null = null
   private listeners = new Set<() => void>()
   private clip: Clip | null = null
   private pasteCount = 0
@@ -61,6 +70,7 @@ export class CanvasController {
   constructor(session: DeckSession) {
     this.session = session
     this.lastSlideId = session.getState().slideId
+    this.state = { selected: [], editingId: null, guides: null, editor: null, slides: [this.lastSlideId] }
     session.subscribe(this.onSession)
   }
 
@@ -78,6 +88,11 @@ export class CanvasController {
   /** Keep the selection honest when the deck changes underneath it (undo, open, delete). */
   private onSession = () => {
     const s = this.session.getState()
+    // Picked slides: only ones still in the deck, in deck order, and always the current one.
+    const picked = new Set(this.state.slides)
+    const slides = s.deck.slides.filter((x) => picked.has(x.id)).map((x) => x.id)
+    const keptSlides = slides.includes(s.slideId) ? slides : [s.slideId]
+    if (!sameIds(keptSlides, this.state.slides)) this.set({ slides: keptSlides })
     if (s.slideId !== this.lastSlideId) {
       this.lastSlideId = s.slideId
       if (this.state.editingId) this.dropEditor()
@@ -176,6 +191,7 @@ export class CanvasController {
 
   /** Stop editing; the text goes into the deck as one undo step (if it changed). */
   finishEditing() {
+    this.endNotes()
     const { editingId, editor } = this.state
     if (!editingId) return
     if (editor && !editor.isDestroyed) {
@@ -260,6 +276,7 @@ export class CanvasController {
   /** Drag: the boxes of the selection when the drag began. */
   dragStart() {
     this.endNudges()
+    this.endNotes()
     const els = this.selectedElements()
     return { ids: els.map((e) => e.id), boxes: new Map(els.map((e) => [e.id, { x: e.x, y: e.y, w: e.w, h: e.h }])) }
   }
@@ -464,9 +481,9 @@ export class CanvasController {
     })
     this.set({ selected: copies.map((c) => c.id) })
   }
-  /** Ctrl+D with elements selected: copies right on top, offset a little. */
+  /** Ctrl+D: copies of the selected elements, offset a little; with nothing selected, of the slide. */
   duplicate() {
-    if (!this.state.selected.length) return
+    if (!this.state.selected.length) return this.duplicateSlides()
     const saved = this.clip
     const savedCount = this.pasteCount
     this.copy()
@@ -477,7 +494,6 @@ export class CanvasController {
 
   // ---- slides -------------------------------------------------------------------------
 
-  /** Add a slide after the current one and go to it. */
   /** A new slide after the current one: in this layout, or else the current slide's (Title and content after a title slide). */
   addSlide(layoutId?: string) {
     this.finishEditing()
@@ -491,7 +507,6 @@ export class CanvasController {
     this.session.goTo(slide.id)
   }
 
-  /** Delete a slide. The last one stays: a deck always has a slide. */
   /** Rearrange the current slide for another layout. One undo step; typed text is never lost. */
   setLayout(layoutId: string) {
     this.finishEditing()
@@ -520,18 +535,132 @@ export class CanvasController {
     })
   }
 
+  /** Delete one slide. */
   deleteSlide(id: string) {
+    this.deleteSlides([id])
+  }
+
+  /**
+   * Delete slides (the picked ones by default). One undo step. A deck always keeps a slide, so
+   * deleting every slide leaves the first. The slide after the last deleted one opens.
+   */
+  deleteSlides(ids: string[] = this.state.slides) {
     const slides = this.session.getState().deck.slides
-    if (slides.length <= 1) return
+    const gone = new Set(ids)
+    if (slides.every((s) => gone.has(s.id))) gone.delete(slides[0].id)
+    if (!slides.some((s) => gone.has(s.id))) return
     this.finishEditing()
-    const i = slides.findIndex((s) => s.id === id)
-    if (i < 0) return
-    const next = slides[i + 1] ?? slides[i - 1]
-    const wasCurrent = this.session.getState().slideId === id
+    const lastGone = slides.findLastIndex((s) => gone.has(s.id))
+    const next =
+      slides.slice(lastGone + 1).find((s) => !gone.has(s.id)) ?? slides.slice(0, lastGone).findLast((s) => !gone.has(s.id))!
+    const current = this.session.getState().slideId
     this.session.update((deck) => {
-      deck.slides.splice(i, 1)
+      deck.slides = deck.slides.filter((s) => !gone.has(s.id))
     })
-    if (wasCurrent) this.session.goTo(next.id)
+    if (gone.has(current)) this.session.goTo(next.id)
+    this.set({ slides: [this.session.getState().slideId] })
+  }
+
+  /** Copies of the picked slides, placed after the last of them. One undo step; the copies are picked. */
+  duplicateSlides(ids: string[] = this.state.slides) {
+    this.finishEditing()
+    const chosen = new Set(ids)
+    const slides = this.session.getState().deck.slides
+    const originals = slides.filter((s) => chosen.has(s.id))
+    if (!originals.length) return
+    const copies = originals.map(copySlide)
+    const after = slides.findLastIndex((s) => chosen.has(s.id))
+    this.session.update((deck) => {
+      deck.slides.splice(after + 1, 0, ...copies)
+    })
+    this.session.goTo(copies[0].id)
+    this.set({ slides: copies.map((c) => c.id) })
+  }
+
+  /** Move the picked slides into a gap of the deck (0 = before the first). One undo step. */
+  moveSlides(gap: number, ids: string[] = this.state.slides) {
+    this.finishEditing()
+    const now = this.session.getState().deck.slides
+    const next = moveToGap(now, new Set(ids), gap)
+    if (sameOrder(now, next)) return false
+    this.session.update((deck) => {
+      const byId = new Map(deck.slides.map((s) => [s.id, s]))
+      deck.slides = next.map((s) => byId.get(s.id)!)
+    })
+    return true
+  }
+
+  /** Keyboard move: `delta` places earlier (negative) or later; a whole row in the sorter. */
+  moveSlidesBy(delta: number) {
+    const gap = gapForStep(this.session.getState().deck.slides, new Set(this.state.slides), delta)
+    return gap >= 0 && this.moveSlides(gap)
+  }
+
+  /** Where the picked slides start now, counting from 1. */
+  slidePosition() {
+    const picked = new Set(this.state.slides)
+    return this.session.getState().deck.slides.findIndex((s) => picked.has(s.id)) + 1
+  }
+
+  // ---- picking slides (strip and sorter) ------------------------------------------------
+
+  /** Open a slide and pick it alone. */
+  openSlide(id: string) {
+    this.goTo(id)
+    this.set({ slides: [this.session.getState().slideId] })
+  }
+
+  /** Ctrl+click: add a slide to the picked ones or take it out (never the last one). */
+  toggleSlide(id: string) {
+    const picked = this.state.slides
+    if (!picked.includes(id)) {
+      this.goTo(id)
+      this.set({ slides: this.inDeckOrder([...picked, id]) })
+      return
+    }
+    if (picked.length === 1) return
+    const rest = picked.filter((s) => s !== id)
+    this.set({ slides: rest })
+    if (this.session.getState().slideId === id) this.goTo(rest[0])
+  }
+
+  /** Shift+click or Shift+arrows: every slide from the anchor to this one. */
+  pickSlideRange(anchor: string, to: string) {
+    const range = rangeIds(this.session.getState().deck.slides, anchor, to)
+    this.set({ slides: range })
+    this.goTo(to)
+  }
+
+  pickAllSlides() {
+    this.finishEditing()
+    this.set({ slides: this.session.getState().deck.slides.map((s) => s.id) })
+  }
+
+  private inDeckOrder(ids: string[]) {
+    const set = new Set(ids)
+    return this.session.getState().deck.slides.filter((s) => set.has(s.id)).map((s) => s.id)
+  }
+
+  // ---- speaker notes ------------------------------------------------------------------
+
+  /** Notes for the current slide. Typing with short pauses is one undo step. */
+  editNotes(text: string) {
+    const id = this.session.getState().slideId
+    this.session.beginGesture()
+    this.session.update((deck) => {
+      const slide = deck.slides.find((s) => s.id === id)
+      if (slide) slide.notes = text
+    })
+    if (this.notesTimer) clearTimeout(this.notesTimer)
+    this.notesTimer = setTimeout(() => this.endNotes(), NOTES_MERGE_MS)
+  }
+
+  /** Close a run of typing in the notes now (leaving the box, undo, or any other action). */
+  endNotes() {
+    if (!this.notesTimer) return
+    clearTimeout(this.notesTimer)
+    this.notesTimer = null
+    this.session.endGesture()
   }
 
   /** Previous and next slide (Page Up, Page Down). */
@@ -552,12 +681,16 @@ export class CanvasController {
 
   undo() {
     this.endNudges()
+    this.endNotes()
     this.finishEditing()
     this.session.undo()
   }
   redo() {
     this.endNudges()
+    this.endNotes()
     this.finishEditing()
     this.session.redo()
   }
 }
+
+const sameIds = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i])

@@ -1,12 +1,14 @@
 import { offline } from '@mysuite/core/offline'
 import { ariaShortcut, shortcutLabel, tooltip } from '@mysuite/core/shortcuts'
 import { InstallButton, OfflineStatus, Popover, UpdateButton, useDialogs } from '@mysuite/core/ui'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, LayoutGrid } from 'lucide-react'
 import { pickImageFile } from '@mysuite/core/images'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Canvas } from './canvas/Canvas'
 import { CanvasController } from './canvas/controller'
 import { DeckSession, type SessionState } from './deck/session'
+import { SorterView } from './sorter/SorterView'
+import { NotesPane } from './ui/NotesPane'
 import { SlideStrip } from './ui/SlideStrip'
 import { editLinkDialog } from './ui/link'
 import { Toolbar } from './ui/Toolbar'
@@ -21,6 +23,18 @@ export default function App() {
   const pendingPaste = useRef(false)
   const state = useSyncExternalStore(session.subscribe, session.getState)
   const ui = useSyncExternalStore(controller.subscribe, controller.getState)
+  // The sorter belongs to one deck: one put in place by New or Open starts in the editor.
+  const [sorterFor, setSorterFor] = useState<number | null>(null)
+  const view = sorterFor === state.generation ? 'sorter' : 'editor'
+
+  const openSorter = useCallback(() => {
+    controller.clearSelection()
+    setSorterFor(session.getState().generation)
+  }, [controller, session])
+  const closeSorter = useCallback(() => {
+    setSorterFor(null)
+    requestAnimationFrame(() => document.querySelector<HTMLElement>('.stage')?.focus())
+  }, [])
 
   useEffect(() => {
     session.start()
@@ -120,6 +134,15 @@ export default function App() {
         controller.addSlide()
         return
       }
+      // The sorter handles its own keys.
+      if (view === 'sorter') {
+        if (mod && (key === 'z' || key === 'y') && !isTyping(e.target)) {
+          e.preventDefault()
+          if (key === 'y' || e.shiftKey) controller.redo()
+          else controller.undo()
+        }
+        return
+      }
 
       // While a text box is being edited, keys belong to the editor (Ctrl+Z included).
       if (editingId && editor && (e.target as HTMLElement | null)?.closest?.('.ProseMirror')) {
@@ -190,7 +213,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [session, controller, ask])
+  }, [session, controller, ask, view])
 
   const slide = session.currentSlide()
   const index = state.deck.slides.indexOf(slide)
@@ -205,27 +228,47 @@ export default function App() {
           <UpdateButton />
           <InstallButton appName="MySlides" />
         </div>
-        <Toolbar controller={controller} ask={ask} theme={state.deck.theme} onInsertPicture={() => void pickPicture()} />
+        {view === 'editor' && (
+          <Toolbar controller={controller} ask={ask} theme={state.deck.theme} onInsertPicture={() => void pickPicture()} />
+        )}
       </header>
-      <div className="slides-body">
-        <SlideStrip controller={controller} />
-        <main className="editor-area" aria-label="Slide editor">
-          <Canvas
-            controller={controller}
-            slide={slide}
-            theme={state.deck.theme}
-            media={session.getMedia()}
-            size={state.deck.size}
-            onDropPicture={(file, at) => void addPicture(file, at)}
-          />
+      {view === 'sorter' ? (
+        <main className="slides-body sorter-body" aria-label="Slide sorter">
+          <SorterView controller={controller} onClose={closeSorter} />
         </main>
-      </div>
+      ) : (
+        <div className="slides-body">
+          <SlideStrip controller={controller} />
+          <main className="editor-area" aria-label="Slide editor">
+            <Canvas
+              controller={controller}
+              slide={slide}
+              theme={state.deck.theme}
+              media={session.getMedia()}
+              size={state.deck.size}
+              onDropPicture={(file, at) => void addPicture(file, at)}
+            />
+            <NotesPane controller={controller} />
+          </main>
+        </div>
+      )}
       <footer className="statusbar">
         <span className="status-left">
           MySlides · Slide {index + 1} of {state.deck.slides.length}
           {ui.selected.length > 1 ? ` · ${ui.selected.length} selected` : ''}
         </span>
-        <OfflineStatus />
+        <span className="status-right">
+          <button
+            type="button"
+            className="status-btn"
+            aria-pressed={view === 'sorter'}
+            title={view === 'sorter' ? 'Back to editor (Escape)' : 'Slide sorter: every slide at once'}
+            onClick={view === 'sorter' ? closeSorter : openSorter}
+          >
+            <LayoutGrid size={14} aria-hidden="true" /> Slide sorter
+          </button>
+          <OfflineStatus />
+        </span>
       </footer>
       {dialog}
     </div>

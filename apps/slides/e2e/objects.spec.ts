@@ -29,6 +29,8 @@ async function sendPicture(page: Page, how: 'drop', bytes: Buffer, at: { x: numb
 }
 
 test('a 12-megapixel photo inserts in under 2 seconds, stored at 1920 px or less; alt text; locked proportions; paste and drop', async ({ page, browserName }) => {
+  // Making a 12-megapixel test photo takes Firefox most of the usual 30 seconds by itself.
+  test.setTimeout(90_000)
   await open(page)
   await page.keyboard.press('Escape')
   const photo = await makePicture(page, 4000, 3000)
@@ -161,7 +163,9 @@ test('the six shapes: insert, color from the theme, outline, lines in any direct
 
   // Style the oval: fill and outline follow the theme.
   // Where only the oval is: off the triangle, away from the lines across the middle.
-  await page.locator(`.stage [data-id="${shapes[2].id}"]`).click({ position: { x: 30, y: 60 } })
+  // (Slide point 500, 330: inside the oval, left of the triangle, above the lines.)
+  const inOval = await screen(page, 500, 330)
+  await page.mouse.click(inOval.x, inOval.y)
   expect(await selection(page)).toEqual([shapes[2].id])
   await toolbar(page).getByRole('button', { name: 'Fill' }).click()
   await scan(page, 'the fill color picker')
