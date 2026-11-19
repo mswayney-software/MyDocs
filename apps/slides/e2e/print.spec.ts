@@ -8,7 +8,9 @@ import { deck, open } from './helpers'
 import { readPdf } from './pdf'
 
 let stressFile = ''
-test.beforeAll(async () => {
+// eslint-disable-next-line no-empty-pattern -- Playwright needs the fixtures argument before testInfo
+test.beforeAll(async ({}, info) => {
+  info.setTimeout(120_000) // building the deck takes a few seconds, longer on a busy machine
   stressFile = join(mkdtempSync(join(tmpdir(), 'myslides-print-')), 'Stress deck.myslides')
   writeFileSync(stressFile, await buildStressDeck())
 })

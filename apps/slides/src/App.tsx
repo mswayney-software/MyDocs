@@ -7,6 +7,7 @@ import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from '
 import { flushSync } from 'react-dom'
 import { Canvas } from './canvas/Canvas'
 import { CanvasController } from './canvas/controller'
+import { APP_VERSION } from './deck/defaults'
 import { DeckSession, type SessionState } from './deck/session'
 import { Presentation } from './present/presentation'
 import { PresenterView } from './present/PresenterView'
@@ -17,6 +18,7 @@ import { PrintDeck } from './print/PrintDeck'
 import { confirmSavePdf } from './print/save-pdf'
 import { SorterView } from './sorter/SorterView'
 import { ChartDialog } from './ui/ChartDialog'
+import { ArrangeMenu, FormatMenu, InsertMenu, SlideMenu } from './ui/Menus'
 import { NotesPane } from './ui/NotesPane'
 import { SlideStrip } from './ui/SlideStrip'
 import { editLinkDialog } from './ui/link'
@@ -208,6 +210,12 @@ export default function App() {
       const key = e.key.toLowerCase()
       const { editingId, editor, selected } = controller.getState()
 
+      // F10: to the menu bar, keeping the selection (Tab goes on into the toolbar from there).
+      if (e.key === 'F10' && !mod && !e.altKey && !e.shiftKey) {
+        e.preventDefault()
+        document.querySelector<HTMLElement>('.menubar button')?.focus()
+        return
+      }
       // F5 presents from the start, Shift+F5 from this slide (never the browser's reload).
       if (e.key === 'F5' && !mod && !e.altKey) {
         e.preventDefault()
@@ -267,15 +275,18 @@ export default function App() {
         return
       }
       // Undo and redo work from the strip and toolbar too (right after deleting a slide, say).
-      const inChrome = (e.target as HTMLElement | null)?.closest?.('.slide-strip, .toolbar')
+      const inChrome = (e.target as HTMLElement | null)?.closest?.('.slide-strip, .chrome, .statusbar')
       if (inChrome && !isTyping(e.target) && mod && (key === 'z' || key === 'y')) {
         e.preventDefault()
         if (key === 'y' || e.shiftKey) controller.redo()
         else controller.undo()
         return
       }
-      // In the strip, menus, the toolbar's fields: their own keys.
-      if (isTyping(e.target) || (e.target as HTMLElement | null)?.closest?.('.slide-strip, .popover-panel, .toolbar')) return
+      // The keys below act on the slide, so only when the keyboard is on the slide (or nowhere in
+      // particular). Enter or Delete on a menu button, the strip or the notes is theirs.
+      const target = e.target as HTMLElement | null
+      const onSlide = !target || target === document.body || target === document.documentElement || !!target.closest?.('.stage')
+      if (isTyping(e.target) || !onSlide) return
 
       const one = selected.length === 1 ? session.currentSlide().elements.find((x) => x.id === selected[0]) : undefined
       const step = e.shiftKey ? 10 : 1
@@ -303,18 +314,24 @@ export default function App() {
       else if (e.key === 'PageUp') controller.step(-1)
       else if (!selected.length) handled = false
       else if (e.key in arrows && !mod) controller.nudge(...arrows[e.key])
+      // Ctrl+Shift+arrows: resize (right and down grow, left and up shrink).
+      else if (e.key in arrows && mod && e.shiftKey) {
+        const [dx, dy] = arrows[e.key]
+        controller.resizeBy(Math.sign(dx) * 10, Math.sign(dy) * 10)
+      }
       else if (e.key === 'Delete' || e.key === 'Backspace') controller.deleteSelected()
       else if (e.key === 'Escape') controller.clearSelection()
       else if ((e.key === 'Enter' || e.key === 'F2') && one?.type === 'text') controller.startEditing(one.id, 'end')
       else if ((e.key === 'Enter' || e.key === 'F2') && one?.type === 'chart') controller.openChart(one.id)
       else if ((e.key === 'Enter' || e.key === 'F2') && one?.type === 'table') controller.startEditing(one.id, 'start')
-      else if (e.key === 'Tab' && (e.target as HTMLElement | null)?.classList?.contains('stage')) controller.cycle(e.shiftKey ? -1 : 1)
+      // Tab steps through the slide's items, then on out of the slide.
+      else if (e.key === 'Tab' && (e.target as HTMLElement | null)?.classList?.contains('stage')) handled = controller.cycle(e.shiftKey ? -1 : 1)
       // Typing a letter on a selected text box starts editing it, with that letter.
       else if (one?.type === 'text' && !mod && e.key.length === 1) controller.startEditing(one.id, { char: e.key })
       else handled = false
-      if (!handled && e.key === 'Tab' && (e.target as HTMLElement | null)?.classList?.contains('stage') && !e.shiftKey) {
-        controller.cycle(1)
-        handled = true
+      // Nothing selected: Tab goes to the first item, Shift+Tab leaves the slide.
+      if (!handled && !selected.length && e.key === 'Tab' && (e.target as HTMLElement | null)?.classList?.contains('stage') && !e.shiftKey && !mod) {
+        handled = controller.cycle(1)
       }
       if (handled) e.preventDefault()
     }
@@ -357,7 +374,15 @@ export default function App() {
         <div className="topbar">
           <FileStatus state={state} />
           <nav className="menubar" aria-label="Menus">
-            <FileMenu session={session} controller={controller} onSavePdf={() => void savePdf()} />
+            <FileMenu session={session} controller={controller} onSavePdf={() => void savePdf()} onAbout={() => void about(ask)} />
+            {view === 'editor' && (
+              <>
+                <InsertMenu controller={controller} ask={ask} onInsertPicture={() => void pickPicture()} />
+                <FormatMenu controller={controller} ask={ask} />
+                <ArrangeMenu controller={controller} ask={ask} />
+              </>
+            )}
+            <SlideMenu controller={controller} onSorter={view === 'sorter' ? closeSorter : openSorter} onPresentHere={() => present('here')} />
           </nav>
           <UpdateButton />
           <InstallButton appName="MySlides" />
@@ -468,6 +493,11 @@ function FileStatus({ state }: { state: SessionState }) {
       <span className="file-state" role="status" aria-live="polite" title={hint}>
         {state.notice ?? status}
       </span>
+      {state.storageWarning && (
+        <span className="file-warning" role="alert">
+          {state.storageWarning}
+        </span>
+      )}
     </div>
   )
 }
@@ -494,7 +524,29 @@ function Item({ label, shortcut, onSelect }: { label: string; shortcut?: string;
   )
 }
 
-function FileMenu({ session, controller, onSavePdf }: { session: DeckSession; controller: CanvasController; onSavePdf: () => void }) {
+/** File, About MySlides: who makes it, its license, and the open-source software in it. */
+async function about(ask: ReturnType<typeof useDialogs>[1]) {
+  const a = await ask({
+    title: 'About MySlides',
+    body:
+      `MySlides ${APP_VERSION}: a free presentation app for school that works offline. Your decks stay on this device. ` +
+      '© 2026 Bright Logic LLC, under the PolyForm Noncommercial License 1.0.0. ' +
+      'MySlides is built with open-source software; every package and its license is listed in full under Third-party licenses.',
+    buttons: [
+      { label: 'Third-party licenses', value: 'licenses' },
+      { label: 'Close', value: 'close', primary: true },
+    ],
+    cancelValue: 'close',
+  })
+  if (a.value === 'licenses') window.open(`${import.meta.env.BASE_URL}THIRD_PARTY_LICENSES.md`, '_blank', 'noopener')
+}
+
+function FileMenu({ session, controller, onSavePdf, onAbout }: {
+  session: DeckSession
+  controller: CanvasController
+  onSavePdf: () => void
+  onAbout: () => void
+}) {
   return (
     <Popover
       menu
@@ -528,6 +580,14 @@ function FileMenu({ session, controller, onSavePdf }: { session: DeckSession; co
               onSelect={() => {
                 close()
                 onSavePdf()
+              }}
+            />
+            <div className="menu-sep" role="separator" />
+            <Item
+              label="About MySlides"
+              onSelect={() => {
+                close()
+                onAbout()
               }}
             />
           </>

@@ -13,7 +13,9 @@ import { deck, open } from './helpers'
 test.describe.configure({ mode: 'default' })
 
 let stressFile = ''
-test.beforeAll(async () => {
+// eslint-disable-next-line no-empty-pattern -- Playwright needs the fixtures argument before testInfo
+test.beforeAll(async ({}, info) => {
+  info.setTimeout(120_000) // building the deck takes a few seconds, longer on a busy machine
   stressFile = join(mkdtempSync(join(tmpdir(), 'myslides-stress-')), 'Stress deck.myslides')
   writeFileSync(stressFile, await buildStressDeck())
 })
@@ -210,5 +212,162 @@ test.describe('stress deck, presenting', () => {
     expect(Math.max(...normal)).toBeLessThan(100)
     // Slowed down, the figure goes in the report only: with other tests running on the same
     // machine it measures the machine as much as the app.
+  })
+})
+
+// The rest of the performance budget (spec, Performance budgets), on the stress deck, in Chrome.
+// Development PC figures; the 4 GB target laptop is a manual check (README, "Needs a person").
+test.describe('stress deck, the other budgets', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'Timed with Chrome tools')
+  test.setTimeout(180_000)
+
+  /** Record every frame's length from now until stopFrames(). */
+  const recordFrames = (page: Page) =>
+    page.evaluate(() => {
+      const w = window as unknown as { __frames: number[]; __recording: boolean }
+      w.__frames = []
+      w.__recording = true
+      let last = performance.now()
+      const tick = (now: number) => {
+        w.__frames.push(now - last)
+        last = now
+        if (w.__recording) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame((t) => {
+        last = t
+        requestAnimationFrame(tick)
+      })
+    })
+  const stopFrames = (page: Page) =>
+    page.evaluate(() => {
+      const w = window as unknown as { __frames: number[]; __recording: boolean }
+      w.__recording = false
+      return w.__frames.slice(1)
+    })
+
+  test('typing has no visible lag, dragging stays smooth, switching slides is under 150 ms', async ({ page }, info) => {
+    await openStress(page)
+    const d = await deck(page)
+    const report: Record<string, unknown> = {}
+
+    // ---- Switching slides: Page Down through every slide, key press to the frame showing it.
+    await page.locator('.stage').focus()
+    const switches: number[] = []
+    for (let i = 1; i < STRESS.slides; i++) {
+      await page.evaluate(() => {
+        const stage = document.querySelector('.stage')!
+        const w = window as unknown as { __sentAt: Promise<number>; __seenAt: Promise<number> }
+        w.__sentAt = new Promise((done) => window.addEventListener('keydown', (e) => done(e.timeStamp), { capture: true, once: true }))
+        w.__seenAt = new Promise((done) => {
+          const mo = new MutationObserver(() => {
+            mo.disconnect()
+            requestAnimationFrame(() => done(performance.now()))
+          })
+          mo.observe(stage, { attributes: true, attributeFilter: ['data-slide'] })
+        })
+      })
+      await page.keyboard.press('PageDown')
+      switches.push(
+        await page.evaluate(async () => {
+          const w = window as unknown as { __sentAt: Promise<number>; __seenAt: Promise<number> }
+          return (await w.__seenAt) - (await w.__sentAt)
+        }),
+      )
+    }
+    const sorted = [...switches].sort((a, b) => a - b)
+    report.switchSlideMs = { worst: Math.round(sorted.at(-1)!), median: Math.round(sorted[sorted.length >> 1]) }
+    expect(sorted.at(-1)!, 'slowest slide switch (ms)').toBeLessThan(150)
+
+    // ---- Dragging: a picture across its slide, one small step after another, frames timed.
+    const pictureSlide = d.slides.findIndex((s: { elements: { type: string }[] }) => s.elements.some((e) => e.type === 'image'))
+    // The strip draws only the thumbnails near the screen, so go to the slide directly.
+    await page.evaluate((i) => window.__mySlides!.goTo(window.__mySlides!.getState().deck.slides[i].id), pictureSlide)
+    const pic = page.locator('.stage img.el-image').first()
+    const b = (await pic.boundingBox())!
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2)
+    await page.mouse.down()
+    await recordFrames(page)
+    for (let i = 1; i <= 60; i++) await page.mouse.move(b.x + b.width / 2 - i * 4, b.y + b.height / 2 + Math.sin(i / 6) * 40)
+    const drag = summary(await stopFrames(page))
+    await page.mouse.up()
+    await page.keyboard.press('ControlOrMeta+z')
+    report.drag = drag
+    expect(drag.fps, 'frames a second while dragging').toBeGreaterThanOrEqual(30)
+
+    // ---- Typing: in a text slide's body, at a student's pace, every key timed (Event Timing).
+    const textSlide = d.slides.findIndex(
+      (s: { elements: { type: string; role?: string }[] }, i: number) =>
+        i > 0 && s.elements.some((e) => e.role === 'body') && !s.elements.some((e) => ['image', 'table', 'chart'].includes(e.type)),
+    )
+    const bodyId = d.slides[textSlide].elements.find((e: { role?: string }) => e.role === 'body').id
+    await page.evaluate((i) => window.__mySlides!.goTo(window.__mySlides!.getState().deck.slides[i].id), textSlide)
+    const body = page.locator(`.stage [data-id="${bodyId}"]`)
+    await body.click()
+    await body.click()
+    await expect(page.locator('.el-live .ProseMirror')).toBeFocused()
+    await page.keyboard.press('ControlOrMeta+End')
+    const typing = async () => {
+      await page.evaluate(() => {
+        const w = window as unknown as { __byKey: Record<number, number> }
+        w.__byKey = {}
+        new PerformanceObserver((list) => {
+          for (const e of list.getEntries() as (PerformanceEventTiming & { interactionId?: number })[]) {
+            if (e.interactionId) w.__byKey[e.interactionId] = Math.max(w.__byKey[e.interactionId] ?? 0, e.duration)
+          }
+        }).observe({ type: 'event', durationThreshold: 16, buffered: false } as PerformanceObserverInit)
+      })
+      const sentence = ' Plants turn light into sugar, and the sugar feeds everything else.'
+      await page.keyboard.type(sentence, { delay: 110 })
+      await page.waitForTimeout(1000)
+      const slow = (await page.evaluate(() => Object.values((window as unknown as { __byKey: Record<number, number> }).__byKey))).sort((a, b) => a - b)
+      const keys = sentence.length
+      // Event Timing reports only keys slower than 16 ms; the rest were faster.
+      const pct = (p: number) => {
+        const fast = keys - slow.length
+        const rank = Math.ceil((p / 100) * keys)
+        return rank <= fast ? 16 : slow[rank - fast - 1]
+      }
+      return { keys, over16ms: slow.length, p95: pct(95), worst: slow.at(-1) ?? 0 }
+    }
+    report.typing = await typing()
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
+    report.typingSlow4x = await typing()
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 })
+    // No visible lag: 95 keys in 100 show within 50 ms (three frames).
+    expect((report.typing as { p95: number }).p95, 'typing, 95th percentile (ms)').toBeLessThanOrEqual(50)
+
+    info.annotations.push({ type: 'budgets', description: JSON.stringify(report) })
+    console.log('budgets', JSON.stringify(report))
+  })
+
+  test('memory with the stress deck open, after visiting every slide, the sorter and presenting', async ({ page }, info) => {
+    await openStress(page)
+    await page.locator('.stage').focus()
+    for (let i = 1; i < STRESS.slides; i++) await page.keyboard.press('PageDown')
+    await page.getByRole('button', { name: 'Slide sorter' }).click()
+    await scrollFrames(page, '.grid-sorter', 60)
+    await page.keyboard.press('Escape')
+    await page.locator('.stage').focus()
+    await page.keyboard.press('F5')
+    for (let i = 0; i < STRESS.slides; i++) await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Escape')
+    const cdp = await page.context().newCDPSession(page)
+    await cdp.send('HeapProfiler.collectGarbage')
+    await cdp.send('Performance.enable')
+    const { metrics } = await cdp.send('Performance.getMetrics')
+    const m = Object.fromEntries(metrics.map((x: { name: string; value: number }) => [x.name, x.value]))
+    // Pictures decoded for what is on screen now (each at its stored size, 4 bytes a pixel): the
+    // largest part of a deck's memory that the script heap doesn't show.
+    const pictures = await page.evaluate(() =>
+      [...document.querySelectorAll('img')].filter((i) => i.getBoundingClientRect().width > 0).reduce((sum, i) => sum + i.naturalWidth * i.naturalHeight * 4, 0),
+    )
+    const mb = (n: number) => Math.round(n / 1e6)
+    const report = { jsHeapMB: mb(m.JSHeapUsedSize), domNodes: m.Nodes, picturesOnScreenMB: mb(pictures) }
+    info.annotations.push({ type: 'memory', description: JSON.stringify(report) })
+    console.log('memory', JSON.stringify(report))
+    // The tab's whole memory (the browser's task manager) is the 4 GB laptop check; these are its
+    // two largest parts and must leave room under 500 MB.
+    expect(report.jsHeapMB + report.picturesOnScreenMB).toBeLessThan(500)
   })
 })

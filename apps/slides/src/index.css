@@ -363,3 +363,10 @@ kbd { font: 600 0.9em system-ui, sans-serif; padding: 1px 5px; border: 1px solid
   .print-page:last-child { break-after: auto; }
   .print-scale { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
 }
+
+/* A backup problem: stays until it clears, in plain words, next to the file name. */
+.file-warning {
+  margin-left: 8px; padding: 2px 8px; border-radius: 4px; font-size: 12px; line-height: 1.35;
+  background: #fff4e5; color: #7a3d00; border: 1px solid #f0b46a; max-width: 46ch;
+}
+:root[data-theme='dark'] .file-warning { background: #3a2a14; color: #ffd8a8; border-color: #8a5a20; }

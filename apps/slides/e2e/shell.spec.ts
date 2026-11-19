@@ -1,4 +1,7 @@
 import { expect, test, type Request } from '@playwright/test'
+import { readdirSync, readFileSync, statSync } from 'node:fs'
+import { join } from 'node:path'
+import { gzipSync } from 'node:zlib'
 
 test('boots to an empty deck shell with no requests to other sites', async ({ page, baseURL }) => {
   const external: string[] = []
@@ -72,4 +75,27 @@ test('after the first load, it starts with the network off and makes zero networ
 
   expect(failed, 'requests that tried the network').toEqual([])
   if (browserName === 'chromium') expect(network, 'responses not from the service worker').toEqual([])
+})
+
+test('first download of the app is under 2 MB compressed, fonts not counted', async ({ browserName }, info) => {
+  test.skip(browserName !== 'chromium', 'Reads the build once')
+  // Everything the service worker caches on the first visit, compressed as a web server would.
+  const root = join(import.meta.dirname, '..', 'dist-e2e')
+  const files: string[] = []
+  const walk = (dir: string) => {
+    for (const f of readdirSync(dir, { withFileTypes: true })) {
+      if (f.isDirectory()) walk(join(dir, f.name))
+      else files.push(join(dir, f.name))
+    }
+  }
+  walk(root)
+  const app = files.filter((f) => /\.(js|css|html|svg|png|webmanifest|md)$/.test(f) && !/print-test\.html$/.test(f))
+  const fonts = files.filter((f) => f.endsWith('.woff2'))
+  const gz = (f: string) => gzipSync(readFileSync(f), { level: 9 }).length
+  const appBytes = app.reduce((sum, f) => sum + gz(f), 0)
+  const fontBytes = fonts.reduce((sum, f) => sum + statSync(f).size, 0)
+  const report = { appKB: Math.round(appBytes / 1024), fontsKB: Math.round(fontBytes / 1024), files: app.length }
+  info.annotations.push({ type: 'first download', description: JSON.stringify(report) })
+  console.log('first download', JSON.stringify(report))
+  expect(appBytes).toBeLessThan(2 * 1024 * 1024)
 })

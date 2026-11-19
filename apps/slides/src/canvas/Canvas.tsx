@@ -249,10 +249,11 @@ export function Canvas({ controller, slide, theme, media, size, onDropPicture }:
     <div
       className="stage"
       ref={stage}
+      data-slide={slide.id}
       tabIndex={0}
       role="application"
       aria-roledescription="slide editor"
-      aria-label={`Slide editor. ${selected.length ? `${selected.length} selected.` : 'Nothing selected.'} Tab moves between items, arrows move them, Enter edits text.`}
+      aria-label={`Slide editor. ${selected.length ? `${selected.length} selected.` : 'Nothing selected.'} Tab moves between items, arrows move them, Ctrl+Shift+arrows resize them, Enter edits. F10 goes to the menus.`}
       onDragOver={(e) => {
         if (e.dataTransfer.types.includes('Files')) {
           e.preventDefault()

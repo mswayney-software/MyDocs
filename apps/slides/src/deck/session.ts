@@ -1,6 +1,7 @@
 import { createBackups, HISTORY_INTERVAL_MS, requestPersistentStorage } from '@mysuite/core/backups'
 import type { Ask } from '@mysuite/core/dialog-types'
 import * as files from '@mysuite/core/file-access'
+import { shortcutLabel } from '@mysuite/core/shortcuts'
 import { createStore, del, get, keys, set, type UseStore } from 'idb-keyval'
 import { produce, type Draft } from 'immer'
 import { FILE_DESCRIPTION, FILE_EXTENSION, FILE_MIME, mediaPaths, readDeckFile, writeDeckFile } from './container'
@@ -8,6 +9,13 @@ import { newDeck } from './defaults'
 import { addMedia, type Media } from './media'
 import { deckToJson, OpenError, readDeckJson } from './read'
 import type { Deck } from './schema'
+
+/** What the student is told when backups fail, or space for them is nearly gone. */
+export const BACKUP_FAILED = `Not backed up: this device is out of space for backups. Your deck is still here; save it to a file (${shortcutLabel('Mod+S')}) to keep it safe.`
+export const SPACE_LOW = `This device is almost out of space for backups. Save your deck to a file (${shortcutLabel('Mod+S')}) to keep it safe.`
+/** Warn when less than this is left for the app's storage. */
+const SPACE_LOW_BYTES = 50 * 1024 * 1024
+const SPACE_CHECK_MS = 60_000
 
 /** Backups are written at most this long after a change, so a crash loses under 2 seconds. */
 export const BACKUP_DELAY_MS = 1000
@@ -36,6 +44,11 @@ export interface SessionState {
   hasFile: boolean
   /** A short message shown next to the file name, such as "Saved". */
   notice: string | null
+  /**
+   * A problem with the backups on this device, in plain words, until it clears: they couldn't be
+   * written (out of space), or space is nearly gone. Null when all is well.
+   */
+  storageWarning: string | null
   /** Id of the slide being edited. */
   slideId: string
   canUndo: boolean
@@ -89,7 +102,7 @@ export class DeckSession {
 
   constructor(ask: Ask, deck: Deck = newDeck()) {
     this.ask = ask
-    this.state = { deck, fileName: UNTITLED, dirty: false, hasFile: false, notice: null, slideId: deck.slides[0].id, canUndo: false, canRedo: false, generation: 0 }
+    this.state = { deck, fileName: UNTITLED, dirty: false, hasFile: false, notice: null, storageWarning: null, slideId: deck.slides[0].id, canUndo: false, canRedo: false, generation: 0 }
     this.savedJson = deckToJson(deck)
   }
 
@@ -265,9 +278,11 @@ export class DeckSession {
     if (this.backupTimer) clearTimeout(this.backupTimer)
     this.backupTimer = null
     const now = Date.now()
-    const deck = this.state.deck
+    // Typing not yet committed to the deck counts too (it is unsaved, by definition).
+    const live = this.liveEdit && this.liveChanged ? this.liveEdit() : null
+    const deck = live ?? this.state.deck
     const data = deckToJson(deck)
-    const snap = { id: this.id, fileName: this.state.fileName, data, at: now, unsaved: this.state.dirty, handle: this.handle }
+    const snap = { id: this.id, fileName: this.state.fileName, data, at: now, unsaved: this.state.dirty || !!live, handle: this.handle }
     // Pictures first, each once: a backup never points at a picture that isn't stored.
     const pictures = [...mediaPaths(deck)].filter((p) => !this.backedUpMedia.has(p) && this.media.has(p))
     const addHistory = now - this.lastHistoryAt >= HISTORY_INTERVAL_MS
@@ -281,9 +296,47 @@ export class DeckSession {
         }
         await backups.writeSnapshot(snap)
         if (addHistory) await backups.appendHistory(snap.id, { at: now, data })
+        await this.checkSpace()
       })
-      .catch((err) => console.error('Backup failed', err))
+      .catch((err) => {
+        console.error('Backup failed', err)
+        // Say so and keep working (spec, Reliability): the deck is still all here in the tab.
+        this.setState({ storageWarning: BACKUP_FAILED })
+      })
     return this.writing
+  }
+
+  private spaceCheckedAt = 0
+  /** While a text box or table is being typed in: the deck with that typing in it, for backups. */
+  private liveEdit: (() => Deck) | null = null
+
+  /** The canvas says a box is being edited live (or no longer is). */
+  setLiveEdit(provider: (() => Deck) | null) {
+    this.liveEdit = provider
+    this.liveChanged = false
+  }
+
+  /** Something was typed in the box being edited: back it up within a second, like any change. */
+  touchLiveEdit() {
+    if (!this.liveEdit) return
+    this.liveChanged = true
+    this.scheduleBackup()
+  }
+  private liveChanged = false
+
+  /** After a backup that worked: clear a failure warning, and look at the space left (once a minute). */
+  private async checkSpace() {
+    let warning: string | null = null
+    if (Date.now() - this.spaceCheckedAt > SPACE_CHECK_MS || this.state.storageWarning) {
+      this.spaceCheckedAt = Date.now()
+      try {
+        const { usage = 0, quota = 0 } = (await navigator.storage?.estimate?.()) ?? {}
+        if (quota > 0 && (quota - usage < SPACE_LOW_BYTES || usage / quota > 0.95)) warning = SPACE_LOW
+      } catch {
+        // No estimate in this browser: nothing to say.
+      }
+    } else if (this.state.storageWarning === SPACE_LOW) warning = SPACE_LOW
+    if (warning !== this.state.storageWarning) this.setState({ storageWarning: warning })
   }
 
   /**

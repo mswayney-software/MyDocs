@@ -145,6 +145,20 @@ test.describe('crash recovery', () => {
     await expect(again.getByRole('navigation', { name: 'Slides' }).getByRole('option')).toHaveCount(2)
   })
 
+  test('kill the tab in the middle of typing in a box: what was typed comes back', async ({ page, context, browserName }) => {
+    await open(page)
+    // Still typing: the box has not been left, so nothing is committed to the deck yet.
+    await page.keyboard.type('Half a sentence about the water cycle')
+    await page.waitForTimeout(2000)
+    await kill(page, browserName)
+
+    const again = await context.newPage()
+    await again.goto('/')
+    await expect(recoverDialog(again)).toBeVisible()
+    await again.getByRole('button', { name: 'Restore' }).click()
+    await expect(again.locator('.stage .el-text').first()).toContainText('Half a sentence about the water cycle')
+  })
+
   test('Escape keeps a backup for later; Discard removes it for good', async ({ page, context, browserName }) => {
     await open(page)
     await editDeck(page, 'Throwaway')

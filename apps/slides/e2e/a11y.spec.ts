@@ -1,6 +1,9 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
+// Each accessibility scan takes a few seconds in Firefox; a test with several needs more than 30.
+test.describe.configure({ timeout: 90_000 })
+
 /** Automated accessibility scan (axe-core, WCAG 2.1 A and AA). Grows with every screen added. */
 async function scan(page: Page, what: string) {
   const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'best-practice']).analyze()

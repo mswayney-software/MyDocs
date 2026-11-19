@@ -177,13 +177,21 @@ export class CanvasController {
     this.finishEditing()
     this.set({ selected: this.elements().map((e) => e.id) })
   }
-  /** Tab and Shift+Tab: the next element in drawing order, wrapping around. */
-  cycle(dir: 1 | -1) {
+  /**
+   * Tab and Shift+Tab: the next element in drawing order. Past the last one (or before the first)
+   * the selection clears and this returns false, so the key moves on to the next control: the
+   * slide is never a keyboard trap.
+   */
+  cycle(dir: 1 | -1): boolean {
     const els = this.elements()
-    if (!els.length) return
     const current = els.findIndex((e) => e.id === this.state.selected.at(-1))
-    const next = current < 0 ? (dir > 0 ? 0 : els.length - 1) : (current + dir + els.length) % els.length
+    const next = current < 0 ? (dir > 0 ? 0 : els.length - 1) : current + dir
+    if (!els.length || next < 0 || next >= els.length) {
+      this.clearSelection()
+      return false
+    }
     this.select([els[next].id])
+    return true
   }
 
   // ---- text editing -------------------------------------------------------------------
@@ -202,8 +210,16 @@ export class CanvasController {
   /** Called by the editor component once its editor exists (or is gone). */
   attachEditor(editor: Editor | null) {
     if (editor === this.state.editor) return
+    this.state.editor?.off('update', this.onLiveUpdate)
     this.set({ editor })
-    if (!editor) return
+    if (!editor) {
+      this.session.setLiveEdit(null)
+      return
+    }
+    // What is typed is backed up as it is typed, not only when the box is left: a crash
+    // mid-paragraph loses at most a second (spec, Reliability).
+    editor.on('update', this.onLiveUpdate)
+    this.session.setLiveEdit(() => this.deckWithLiveEdit())
     const caret = this.pendingCaret
     this.pendingCaret = null
     if (caret === 'all') editor.commands.selectAll()
@@ -286,7 +302,38 @@ export class CanvasController {
     this.measureTable = measure
   }
 
+  private onLiveUpdate = () => this.session.touchLiveEdit()
+
+  /** The deck as it would be if the box or table being edited were finished now. */
+  private deckWithLiveEdit() {
+    const deck = this.session.getState().deck
+    const { editingId, editor } = this.state
+    if (!editingId || !editor || editor.isDestroyed) return deck
+    const slideId = this.session.getState().slideId
+    return {
+      ...deck,
+      slides: deck.slides.map((s) =>
+        s.id !== slideId
+          ? s
+          : {
+              ...s,
+              elements: s.elements.map((el) => {
+                if (el.id !== editingId) return el
+                if (el.type === 'text') return { ...el, content: stripDefaults(editor.getJSON()) as typeof el.content }
+                if (el.type === 'table') {
+                  const grid = docToGrid(editor.getJSON(), el.w)
+                  return grid ? { ...el, ...(stripDefaults(grid) as typeof grid) } : el
+                }
+                return el
+              }),
+            },
+      ),
+    }
+  }
+
   private dropEditor() {
+    this.state.editor?.off('update', this.onLiveUpdate)
+    this.session.setLiveEdit(null)
     this.editStart = null
     this.pendingCaret = null
     this.pendingText = ''
@@ -326,6 +373,47 @@ export class CanvasController {
     if (this.nudgeTimer) clearTimeout(this.nudgeTimer)
     this.nudgeTimer = setTimeout(() => this.endNudges(), NUDGE_MERGE_MS)
   }
+  /**
+   * Ctrl+Shift+arrows: make the selection wider or narrower, taller or shorter, from its top left
+   * corner (spec, Accessibility: resizing with the keyboard). Pictures keep their proportions; a
+   * table's columns stretch with it. A run of presses is one undo step, like nudges.
+   */
+  resizeBy(dw: number, dh: number) {
+    if (!this.state.selected.length || this.state.editingId) return
+    this.session.beginGesture()
+    this.updateSelected((el) => {
+      const line = el.type === 'shape' && (el.shape === 'line' || el.shape === 'arrow')
+      let w = Math.max(MIN_SIZE, el.w + dw)
+      let h = Math.max(line ? 0 : MIN_SIZE, el.h + dh)
+      if (el.type === 'image' && el.w > 0 && el.h > 0) {
+        if (dw) h = Math.max(MIN_SIZE, (w * el.h) / el.w)
+        else w = Math.max(MIN_SIZE, (h * el.w) / el.h)
+      }
+      if (el.type === 'table' && w !== el.w) el.columnWidths = fitWidths(el.columnWidths, round(w))
+      el.w = round(w)
+      el.h = round(h)
+    })
+    if (this.nudgeTimer) clearTimeout(this.nudgeTimer)
+    this.nudgeTimer = setTimeout(() => this.endNudges(), NUDGE_MERGE_MS)
+  }
+
+  /** Place one element exactly (Size and position…). One undo step. */
+  setBox(id: string, box: Box) {
+    this.endNudges()
+    const slideId = this.session.getState().slideId
+    this.session.update((deck) => {
+      const el = deck.slides.find((s) => s.id === slideId)?.elements.find((e) => e.id === id)
+      if (!el) return
+      const line = el.type === 'shape' && (el.shape === 'line' || el.shape === 'arrow')
+      const w = round(Math.max(MIN_SIZE, box.w))
+      if (el.type === 'table' && w !== el.w) el.columnWidths = fitWidths(el.columnWidths, w)
+      el.x = round(box.x)
+      el.y = round(box.y)
+      el.w = w
+      el.h = round(Math.max(line ? 0 : MIN_SIZE, box.h))
+    })
+  }
+
   /** Close a run of nudges now (before undo, or any other change). */
   endNudges() {
     if (!this.nudgeTimer) return
