@@ -24,6 +24,51 @@ MyDocs is a web app: **[open MyDocs](https://mswayney-software.github.io/MyDocs/
 - **Files.** Documents are saved as `.owdoc` files, a single file with everything in it, images included. Use File > Save as Word file for a `.docx`.
 - **Printing headers and page numbers.** Chrome and Edge (version 131 or newer) print headers, footers and page numbers. Firefox and Safari print the right paper size and margins but can't print headers or page numbers yet; the app warns before printing. For MLA and APA papers, print from Chrome or Edge, or save as a Word file.
 
+## MySlides: help test it
+
+MySlides is the second app on this foundation: a presentation app for school, offline like MyDocs. It is on the `myslides-phase0` branch ([draft PR #1](https://github.com/mswayney-software/MyDocs/pull/1)), not on `main` yet. It is built through Phase 7 of 8 (Phase 8, polish, is next). The automated tests (about 140 unit and 110 browser tests in Chrome and Firefox) pass. What's below is what they can't cover: real devices, real print windows, real projectors, and how it feels.
+
+**Try it:** [open the MySlides preview](https://raw.githack.com/mswayney-software/MyDocs/c5a0b8fdbe8dd3ce07e12bdc15b0d8b09b4b5da0/index.html) (tap through the "Open the page" screen; the preview needs the internet). For the big tests, download the [stress deck](https://github.com/mswayney-software/MyDocs/raw/c5a0b8fdbe8dd3ce07e12bdc15b0d8b09b4b5da0/stress-deck.myslides) (60 slides, 30 pictures, 10 tables, 10 charts, 5.4 MB) and open it with File > Open.
+
+**Report what you find** as a [GitHub issue](https://github.com/mswayney-software/MyDocs/issues): the browser and its version, the computer or phone, the steps, what you expected and what happened, and a screenshot or the PDF if there is one. One issue per problem.
+
+### Needs a person (highest value first)
+
+1. **Save as PDF in Firefox.** Open the stress deck, File > Save as PDF…, follow the note (Save as PDF, Landscape, headers and footers off). Check: 60 pages, one slide per page, no slide cut off at any edge, text can be selected in the PDF. Note the page size from the PDF's document properties.
+2. **Save as PDF in Safari, on a Mac and on an iPhone or iPad.** Same steps. Phase 0 found Safari prints on Letter portrait and cut the slide off; the app now scales each slide to the page, so check nothing is cut off and nothing is blank.
+3. **Save as PDF in Chrome and Edge, through the real print window.** Should be 60 pages exactly 13.333 × 7.5 inches, edge to edge, no blank pages. Zoom the PDF to 400% on a chart and a table: lines should stay sharp.
+4. **Presenter view with a real second screen or projector** (Chrome, Edge and Firefox). Present menu (the arrow beside Present) > Presenter view. Drag the audience window to the projector, press F there. Check: arrow keys and clicks in either window move both; B blanks the screen; the timer, clock, next slide and notes on your screen; closing either window ends the presentation and the editor comes back with nothing changed.
+5. **Present with the network off.** Open the app once online (so it caches itself), then turn Wi-Fi off and present the stress deck start to finish: nothing should change, every picture should show.
+6. **A low-end laptop (4 GB of memory, built-in graphics)**, the computer the speed targets are set for. With the stress deck:
+   - it opens in under 3 seconds;
+   - typing in a text box has no visible lag;
+   - dragging a shape or picture stays smooth;
+   - clicking between slides in the strip feels instant;
+   - the Slide sorter (status bar) scrolls smoothly top to bottom;
+   - while presenting, the next slide appears without a pause;
+   - the browser's task manager (Shift+Esc in Chrome) shows the tab under 500 MB.
+
+   Also insert a phone photo (Picture button): it should be on the slide in under 2 seconds.
+7. **Screen readers** (NVDA or Narrator on Windows, VoiceOver on Mac or iPhone). Move around with the keyboard only: the slide strip (arrow keys, Ctrl+arrows to reorder), the canvas (Tab between items, arrows move them, Enter edits text), the chart data window, a table, and Present. Is everything announced, and can everything be reached?
+8. **Install as an app** (Chrome or Edge: the Install button in the top bar). Then double-click a `.myslides` file in your file manager: it should open in the installed app.
+9. **Tablets and narrow windows.** The app should be usable down to 768 pixels wide (an iPad in portrait).
+10. **The Phase 0 print test page** in Firefox and Mac Safari: `print-test.html` in the [preview](https://raw.githack.com/mswayney-software/MyDocs/c5a0b8fdbe8dd3ce07e12bdc15b0d8b09b4b5da0/print-test.html), Save as PDF with default settings, and note the page count and page size.
+
+### General use
+
+Build a real deck for a class: a title slide, some text slides, a photo, a table, a bar, line and pie chart, speaker notes, a theme, transitions. Save it, close the tab, reopen it. Present it. Save it as a PDF. Anything confusing, slow, ugly or broken is worth an issue, including the wording.
+
+### Known gaps (no need to report)
+
+- Phase 8 (polish) hasn't started: the accessibility, performance and offline passes, empty states, error messages, and the first-run deck.
+- Only the File menu exists; Insert, Format, Arrange and Slide are toolbar buttons for now.
+- Elements and table columns can't be resized with the keyboard yet (moving with arrows works).
+- A table's thumbnail updates when you leave the table, not while you type.
+- The name "MySlides" and the `.myslides` extension are placeholders.
+- The preview link above shows the build as of Phase 7; a new link comes with each update.
+
+To run MySlides locally instead: `npm install`, then `npm run dev -w myslides`. `npm run stress-deck -w myslides` writes the stress deck to `apps/slides/stress-deck.myslides`. What's been checked so far, phase by phase, is in [docs/REUSE_AUDIT.md](docs/REUSE_AUDIT.md).
+
 ## Privacy
 
 MyDocs has no server. It makes no network requests after it loads: no analytics, no fonts or images from the web, no accounts. The app's content security policy blocks any request to another site, so this is enforced by the browser, not just promised. Your documents and their backups stay on your device. Details in [SECURITY.md](SECURITY.md).
