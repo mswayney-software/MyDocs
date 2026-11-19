@@ -1,5 +1,9 @@
-import { ariaShortcut, shortcutLabel, tooltip } from '@mysuite/core/shortcuts'
+import { ariaShortcut, shortcutLabel } from '@mysuite/core/shortcuts'
 import { useEffect, useRef } from 'react'
+
+const ARROWS: Record<string, string> = { ArrowUp: '↑', ArrowDown: '↓', ArrowLeft: '←', ArrowRight: '→' }
+/** "Ctrl+ArrowUp" reads better as "Ctrl+↑". */
+const keyLabel = (shortcut: string) => shortcutLabel(shortcut).replace(/Arrow(Up|Down|Left|Right)/, (k) => ARROWS[k])
 
 export interface SlideMenuAction {
   label: string
@@ -49,7 +53,7 @@ export function SlideMenu({ x, y, actions, onClose }: { x: number; y: number; ac
           role="menuitem"
           className="menu-item"
           disabled={a.disabled}
-          title={tooltip(a.label, a.shortcut)}
+          title={a.shortcut ? `${a.label} (${keyLabel(a.shortcut)})` : a.label}
           aria-keyshortcuts={a.shortcut ? ariaShortcut(a.shortcut) : undefined}
           onClick={() => {
             a.run()
@@ -60,7 +64,7 @@ export function SlideMenu({ x, y, actions, onClose }: { x: number; y: number; ac
           <span className="menu-label">{a.label}</span>
           {a.shortcut && (
             <span className="menu-shortcut" aria-hidden="true">
-              {shortcutLabel(a.shortcut)}
+              {keyLabel(a.shortcut)}
             </span>
           )}
         </button>

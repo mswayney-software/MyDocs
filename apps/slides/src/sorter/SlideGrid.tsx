@@ -66,12 +66,14 @@ export function SlideGrid({ controller, variant, label, onOpen }: {
   const focusAfter = useRef(false)
 
   const cellW = v.thumbW + BORDER + v.gapX + v.extraW
+  const cols = variant === 'strip' ? 1 : columnsFor(view.width, cellW, v.padX)
   const grid: Grid = {
     count: deck.slides.length,
-    cols: variant === 'strip' ? 1 : columnsFor(view.width, cellW, v.padX),
+    cols,
     cellW,
     cellH: thumbH + BORDER + v.gapY + v.extraH,
-    padX: v.padX,
+    // The sorter's grid sits in the middle of the window.
+    padX: variant === 'strip' ? v.padX : Math.max(v.padX, (view.width - cols * cellW + v.gapX) / 2),
     padY: v.padY,
   }
   const gridRef = useRef(grid)

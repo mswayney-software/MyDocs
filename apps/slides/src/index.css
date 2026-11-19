@@ -27,7 +27,7 @@
 
 /* The strip and the sorter: a scroll area holding only the thumbnails on screen, each placed
    by its index (every thumbnail is the same size). */
-.grid-scroll { flex: 1; position: relative; overflow-y: auto; overflow-x: hidden; min-height: 0; }
+.grid-scroll { flex: 1; position: relative; overflow-y: auto; overflow-x: hidden; min-height: 0; user-select: none; -webkit-user-select: none; }
 .grid-list { position: relative; outline: none; }
 .grid-cell { position: absolute; left: 0; top: 0; display: flex; gap: 6px; align-items: flex-start; contain: layout style; }
 .grid-cell.is-dragged { opacity: 0.4; }
