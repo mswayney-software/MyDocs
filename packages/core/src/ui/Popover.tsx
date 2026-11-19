@@ -38,7 +38,8 @@ export function Popover({ label, title, menu, className, onClosed, trigger, chil
 
   useEffect(() => {
     if (!open) return
-    const items = () => Array.from(root.current?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? [])
+    // Disabled items can't take focus: arrow keys skip them instead of stopping there.
+    const items = () => Array.from(root.current?.querySelectorAll<HTMLElement>(ITEM_SELECTOR) ?? []).filter((el) => !el.matches(':disabled'))
     items()[0]?.focus()
 
     const onPointerDown = (e: PointerEvent) => {
