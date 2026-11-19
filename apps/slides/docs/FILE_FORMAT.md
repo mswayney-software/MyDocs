@@ -105,10 +105,26 @@ Pictures are JPEG, PNG, WebP or GIF (first frame only). SVG is not accepted in v
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `headerRow` | boolean | `true` | The first row is a header, styled from the theme |
-| `columnWidths` | numbers, 1 to 10 | | Width of each column in slide units |
+| `columnWidths` | numbers, 1 to 10 | | Width of each column in slide units. MySlides writes them adding up to the table's `w`; a reader given widths that don't scales them to fit `w` |
 | `rows` | array, 1 to 20 | | Each row is `{ "cells": [...] }` with exactly one cell per column |
 
-A cell is `{ "content": <rich text>, "fill": <color>, "align": "left" | "center" | "right" }` (defaults: `fill` null, `align` left). There are no merged cells and no formulas.
+A cell is `{ "content": <rich text>, "fill": <color>, "align": "left" | "center" | "right" }` (defaults: `fill` null, `align` left). `align` places every line of the cell's text. There are no merged cells and no formulas.
+
+How a table is drawn (MySlides 1; another app may differ): text in the theme's body font and text color at 16 points; thin lines in a mix of the theme's text and background colors; the rows share the box's height and grow to fit their text. A header row is filled with the theme's `accent1` and its text is bold, in whichever of the theme's text color, the theme's background color, white or black reads best on it. If none reaches WCAG AA contrast (4.5:1), the fill is shaded slightly darker or lighter until one does. A cell's own `fill` replaces the header color.
+
+A small table, as it sits in `deck.json`:
+
+```json
+{ "id": "e3", "type": "table", "x": 680, "y": 176, "w": 520, "h": 120,
+  "headerRow": true, "columnWidths": [260, 260],
+  "rows": [
+    { "cells": [
+      { "content": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Week" }] }] }, "fill": null, "align": "left" },
+      { "content": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "Ants" }] }] }, "fill": null, "align": "right" } ] },
+    { "cells": [
+      { "content": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "1" }] }] }, "fill": null, "align": "left" },
+      { "content": { "type": "doc", "content": [{ "type": "paragraph", "content": [{ "type": "text", "text": "120" }] }] }, "fill": "accent2", "align": "right" } ] } ] }
+```
 
 **`chart`**
 
@@ -122,7 +138,17 @@ A cell is `{ "content": <rich text>, "fill": <color>, "align": "left" | "center"
 | `options.legend` | boolean | `true` | Show the legend |
 | `options.xTitle`, `options.yTitle` | strings | `""` | Axis titles; empty for none |
 
-No chart colors are stored: series take the theme's accent colors in order (`accent1` for the first series, and so on).
+No chart colors are stored: series take the theme's accent colors in order (`accent1` for the first series, and so on). A pie's slices take them in the same order, one per category; past the sixth the accents come round again, lighter.
+
+How a chart is drawn (MySlides 1; another app may differ):
+
+- **Bar**: the series side by side in each category, from a zero line. Negative numbers hang below it. An empty value (`null`) has no bar.
+- **Line**: one line per series, with a dot at each value. An empty value breaks the line instead of dropping it to zero; a series with one value is a single dot.
+- **Pie**: the first series only. Empty, zero and negative values have no slice. Each slice shows its share as a percentage when there is room. If no value is above zero, the pie is an empty circle with a note saying so.
+- The value axis always includes zero and steps in round numbers. Category labels lie flat when they fit and slant when they don't; long labels are shortened with "…".
+- Text is the theme's body font and text color. A chart is drawn as SVG, so it stays sharp at any size and in PDF.
+
+The numbers are plain JSON numbers: a spreadsheet or a script can read them straight from `deck.json`.
 
 ### Colors
 
