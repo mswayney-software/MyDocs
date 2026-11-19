@@ -64,6 +64,11 @@ export function createBackups({ database, lockPrefix: LOCK_PREFIX }: BackupNames
     await set(`hist:${id}`, list.slice(-HISTORY_SIZE), db())
   }
 
+  /** The latest backup of one document, if there is one. */
+  async function readSnapshot(id: string): Promise<Snapshot | undefined> {
+    return (await get(`snap:${id}`, db())) as Snapshot | undefined
+  }
+
   async function readHistory(id: string): Promise<HistoryEntry[]> {
     return ((await get(`hist:${id}`, db())) as HistoryEntry[] | undefined) ?? []
   }
@@ -120,7 +125,7 @@ export function createBackups({ database, lockPrefix: LOCK_PREFIX }: BackupNames
     )
   }
 
-  return { writeSnapshot, appendHistory, readHistory, allBackupData, deleteDocument, findRecoverable, holdLock }
+  return { writeSnapshot, readSnapshot, appendHistory, readHistory, allBackupData, deleteDocument, findRecoverable, holdLock }
 }
 
 /** Ask the browser not to evict our backups under storage pressure. Best effort. */

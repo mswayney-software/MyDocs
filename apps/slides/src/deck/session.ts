@@ -286,6 +286,16 @@ export class DeckSession {
     return this.writing
   }
 
+  /**
+   * Back up now, pictures included, and say under which id: Presenter view's second window
+   * reads the deck from there (spec, Architecture).
+   */
+  async backupNow(): Promise<string> {
+    const id = this.id
+    await this.backup()
+    return id
+  }
+
   // ---- file actions -------------------------------------------------------------------
 
   // File actions run one at a time. Each one awaits dialogs and storage, and a second action
@@ -564,4 +574,21 @@ async function removeUnusedMedia(keep: Set<string>) {
   const used = new Set(keep)
   for (const data of await backups.allBackupData()) for (const m of data.matchAll(MEDIA_IN_TEXT)) used.add(m[0])
   for (const key of await keys(mediaDb())) if (!used.has(String(key))) await del(key, mediaDb())
+}
+
+/**
+ * A deck as last backed up on this device, with its pictures: what Presenter view's audience
+ * window shows. Null if there is no such backup.
+ */
+export async function readBackedUpDeck(id: string): Promise<{ deck: Deck; media: Media; fileName: string } | null> {
+  const snap = await backups.readSnapshot(id)
+  if (!snap) return null
+  const stored = new Set((await keys(mediaDb())).map(String))
+  const { deck } = readDeckJson(snap.data, (src) => stored.has(src))
+  const media: Media = new Map()
+  for (const path of mediaPaths(deck)) {
+    const blob = (await get(path, mediaDb())) as Blob | undefined
+    if (blob) media.set(path, blob)
+  }
+  return { deck, media, fileName: snap.fileName }
 }
