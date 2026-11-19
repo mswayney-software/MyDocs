@@ -204,6 +204,7 @@ export type Element = z.infer<typeof element> | BrokenElement
 // ---- slides, theme, deck ---------------------------------------------------------------
 
 export const TRANSITIONS = ['none', 'fade', 'slide'] as const
+export type Transition = (typeof TRANSITIONS)[number]
 
 export const slideSchema = z.looseObject({
   id: z.string().min(1),

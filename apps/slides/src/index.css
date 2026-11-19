@@ -190,3 +190,99 @@
 .swatches .swatch-heading { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
 .menu-heading { padding: 6px 8px 2px; font-size: 12px; color: var(--ink-soft); }
 .menu-icon { width: 18px; display: inline-flex; color: var(--ink-soft); }
+
+/* ---- presenting ------------------------------------------------------------------ */
+
+.present-split { display: inline-flex; margin-left: auto; }
+.present-btn, .present-more > button {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px;
+  border: 1px solid var(--focus); background: var(--focus); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+}
+.present-btn { border-radius: 6px 0 0 6px; }
+.present-more > button { border-radius: 0 6px 6px 0; padding: 0 6px; border-left-color: rgb(255 255 255 / 0.45); }
+.present-btn:hover, .present-more > button:hover { filter: brightness(1.1); }
+.present-btn:focus-visible, .present-more > button:focus-visible { outline-offset: 2px; }
+
+/* The slide and nothing else: black around it, whatever the app's own colors. */
+.present {
+  position: fixed; inset: 0; z-index: 50; background: #000; color: #f2f2f2; outline: none;
+  user-select: none; -webkit-user-select: none; overflow: hidden;
+}
+.present.is-idle { cursor: none; }
+.present-stage { position: absolute; inset: 0; overflow: hidden; }
+.present-frame { position: absolute; overflow: hidden; background: #000; }
+.present-layer { position: absolute; inset: 0; will-change: transform, opacity; }
+.present-scale { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.present-cover { position: absolute; inset: 0; z-index: 5; background: #000; display: grid; place-items: center; }
+.present-end p { margin: 0; font-size: 18px; color: #b8b8b8; }
+.present-message { display: grid; place-items: center; font-size: 18px; }
+.present-message p { max-width: 36em; text-align: center; padding: 16px; }
+
+.present-bar {
+  position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 10;
+  display: flex; align-items: center; gap: 4px; padding: 4px;
+  background: rgb(24 24 24 / 0.92); border: 1px solid #444; border-radius: 8px;
+  opacity: 0; pointer-events: none; transition: opacity 150ms;
+}
+.present-bar.is-shown, .present-bar:focus-within { opacity: 1; pointer-events: auto; }
+.present-bar button {
+  display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 6px;
+  background: transparent; color: #f2f2f2; cursor: pointer;
+}
+.present-bar button:hover { background: #3a3a3a; }
+.present-bar button:focus-visible { outline: 2px solid #8fb4ff; outline-offset: 0; }
+.present-count { min-width: 64px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+
+.present-hint {
+  position: absolute; left: 50%; top: 24px; transform: translateX(-50%); z-index: 12;
+  max-width: min(560px, calc(100% - 32px)); padding: 16px 20px; border-radius: 10px;
+  background: #1f1f1f; border: 1px solid #555; color: #f2f2f2; font-size: 15px; line-height: 1.45;
+}
+.present-hint p { margin: 0 0 12px; }
+.present-hint-actions { display: flex; gap: 8px; }
+.present-hint .dlg-btn:not(.dlg-primary) { background: #2c2c2c; color: #f2f2f2; border-color: #666; }
+kbd { font: 600 0.9em system-ui, sans-serif; padding: 1px 5px; border: 1px solid currentColor; border-radius: 4px; }
+
+/* Presenter view: dark, for a dim room. */
+.presenter {
+  position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px;
+  background: #151515; color: #ececec; outline: none; font-size: 15px;
+}
+.presenter-top { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.presenter-count { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.presenter-timer { display: inline-flex; align-items: center; gap: 4px; }
+.presenter-elapsed { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 4.2em; }
+.presenter-clock { font-size: 18px; color: #c8c8c8; font-variant-numeric: tabular-nums; }
+.presenter-end { margin-left: auto; }
+.presenter-note { margin: 0; color: #c8c8c8; font-size: 14px; }
+.presenter-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px;
+  border: 1px solid #555; border-radius: 6px; background: #262626; color: #ececec; font: inherit; cursor: pointer;
+}
+.presenter-btn:hover:not(:disabled) { background: #333; }
+.presenter-btn:disabled { opacity: 0.45; cursor: default; }
+.presenter-btn[aria-pressed='true'] { background: #ececec; color: #151515; }
+.presenter-btn:focus-visible { outline: 2px solid #8fb4ff; outline-offset: 1px; }
+.presenter-primary { background: #2f62c8; border-color: #2f62c8; color: #fff; }
+.presenter-primary:hover:not(:disabled) { background: #3a6fd8; }
+.presenter-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr); gap: 16px; }
+.presenter-current { position: relative; min-height: 0; background: #000; border-radius: 6px; overflow: hidden; }
+.presenter-side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.presenter-label { margin: 0 0 4px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #c8c8c8; }
+.presenter-next-slide { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 6px; overflow: hidden; }
+.presenter-none { position: absolute; inset: 0; display: grid; place-items: center; color: #b8b8b8; }
+.presenter-notes { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.presenter-notes-head { display: flex; align-items: center; gap: 6px; }
+.presenter-notes-head .presenter-label { margin-right: auto; }
+.presenter-notes-text {
+  flex: 1; min-height: 0; overflow: auto; white-space: pre-wrap; line-height: 1.45; padding: 10px 12px;
+  background: #1f1f1f; border: 1px solid #3a3a3a; border-radius: 6px; user-select: text;
+}
+.presenter-none-inline { color: #a8a8a8; }
+.presenter-controls { display: flex; gap: 8px; justify-content: center; }
+.presenter-controls .presenter-btn { min-height: 40px; padding: 0 16px; }
+@media (max-width: 900px) {
+  .presenter-main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+}
+.topbar-action ~ .present-split { margin-left: 8px; }
+.present-more .popover-panel { left: auto; right: 0; white-space: nowrap; }

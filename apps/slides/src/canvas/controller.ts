@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core'
 import { newId, textBox } from '../deck/defaults'
 import { applyLayout, layoutById, slideWithLayout } from '../deck/layouts'
 import type { Media } from '../deck/media'
-import type { Color, Element, SHAPES, Slide } from '../deck/schema'
+import type { Color, Element, SHAPES, Slide, Transition } from '../deck/schema'
 import { themeForDeck } from '../deck/themes'
 import type { DeckSession } from '../deck/session'
 import { shrinkImage } from '@mysuite/core/images'
@@ -532,6 +532,17 @@ export class CanvasController {
     this.session.update((deck) => {
       const slide = deck.slides.find((s) => s.id === id)
       if (slide) slide.background = color
+    })
+  }
+
+  /**
+   * How slides appear when presenting: the picked slides, or every slide with `all`. One undo
+   * step.
+   */
+  setTransition(kind: Transition, all = false) {
+    const ids = new Set(all ? this.session.getState().deck.slides.map((s) => s.id) : this.state.slides)
+    this.session.update((deck) => {
+      for (const slide of deck.slides) if (ids.has(slide.id)) slide.transition = kind
     })
   }
 

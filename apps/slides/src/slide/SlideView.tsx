@@ -3,6 +3,7 @@ import { lineEnds } from '../canvas/geometry'
 import type { Media } from '../deck/media'
 import type { Element, ShapeElement, Slide, TableElement, Theme } from '../deck/schema'
 import { isEmptyText, richTextHtml } from '../text/extensions'
+import { pictureUrl } from './pictures'
 import { placeholderHint, resolveColor, textBoxStyle } from './style'
 
 const box = (el: { x: number; y: number; w: number; h: number }): CSSProperties => ({
@@ -12,16 +13,6 @@ const box = (el: { x: number; y: number; w: number; h: number }): CSSProperties 
   height: el.h,
 })
 
-const urls = new WeakMap<Blob, string>()
-function pictureUrl(blob: Blob | undefined): string | undefined {
-  if (!blob) return undefined
-  let url = urls.get(blob)
-  if (!url) {
-    url = URL.createObjectURL(blob)
-    urls.set(blob, url)
-  }
-  return url
-}
 
 interface SlideViewProps {
   slide: Slide

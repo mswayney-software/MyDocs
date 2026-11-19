@@ -1,10 +1,11 @@
-import { Popover } from '@mysuite/core/ui'
-import { LayoutTemplate, PaintBucket, Palette } from 'lucide-react'
+import { MenuItem, MenuSeparator, Popover } from '@mysuite/core/ui'
+import { Blend, LayoutTemplate, PaintBucket, Palette } from 'lucide-react'
 import { useMemo } from 'react'
 import type { CanvasController } from '../canvas/controller'
 import { applyLayout, LAYOUTS } from '../deck/layouts'
 import type { Media } from '../deck/media'
-import type { Slide, Theme } from '../deck/schema'
+import type { Slide, Theme, Transition } from '../deck/schema'
+import { TRANSITION_NAMES } from './transitions'
 import { THEMES, themeForDeck } from '../deck/themes'
 import { SlideView } from '../slide/SlideView'
 import { ColorPicker } from './ColorPicker'
@@ -58,6 +59,7 @@ export function DesignPickers({ controller, slide, theme }: { controller: Canvas
         noneLabel="Theme background"
         onPick={(c) => controller.setBackground(c)}
       />
+      <TransitionPicker controller={controller} slide={slide} />
     </>
   )
 }
@@ -115,5 +117,42 @@ function ThemeChoices({ slide, current, media, width, pick }: {
         </button>
       ))}
     </div>
+  )
+}
+
+/** How the slide appears when presenting. Applies to the picked slides, or to every slide. */
+function TransitionPicker({ controller, slide }: { controller: CanvasController; slide: Slide }) {
+  const picked = controller.getState().slides.length
+  const heading = picked > 1 ? `How ${picked} slides appear` : 'How this slide appears'
+  return (
+    <Popover label="Transition" menu trigger={<Blend {...ICON} />} title={`Transition: ${TRANSITION_NAMES[slide.transition]}`}>
+      {(close) => (
+        <>
+          <div className="menu-heading" role="presentation">
+            {heading}
+          </div>
+          {(Object.keys(TRANSITION_NAMES) as Transition[]).map((t) => (
+            <MenuItem
+              key={t}
+              label={TRANSITION_NAMES[t]}
+              radio
+              checked={slide.transition === t}
+              onSelect={() => {
+                close()
+                controller.setTransition(t)
+              }}
+            />
+          ))}
+          <MenuSeparator />
+          <MenuItem
+            label={`Use “${TRANSITION_NAMES[slide.transition]}” on every slide`}
+            onSelect={() => {
+              close()
+              controller.setTransition(slide.transition, true)
+            }}
+          />
+        </>
+      )}
+    </Popover>
   )
 }

@@ -1,12 +1,15 @@
 import { offline } from '@mysuite/core/offline'
 import { ariaShortcut, shortcutLabel, tooltip } from '@mysuite/core/shortcuts'
 import { InstallButton, OfflineStatus, Popover, UpdateButton, useDialogs } from '@mysuite/core/ui'
-import { ChevronDown, LayoutGrid } from 'lucide-react'
+import { ChevronDown, LayoutGrid, Play } from 'lucide-react'
 import { pickImageFile } from '@mysuite/core/images'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Canvas } from './canvas/Canvas'
 import { CanvasController } from './canvas/controller'
 import { DeckSession, type SessionState } from './deck/session'
+import { Presentation } from './present/presentation'
+import { PresenterView } from './present/PresenterView'
+import { PresentScreen } from './present/PresentScreen'
 import { SorterView } from './sorter/SorterView'
 import { NotesPane } from './ui/NotesPane'
 import { SlideStrip } from './ui/SlideStrip'
@@ -20,6 +23,8 @@ export default function App() {
   const [dialog, ask] = useDialogs()
   const [session] = useState(() => new DeckSession(ask))
   const [controller] = useState(() => new CanvasController(session))
+  const [presentation] = useState(() => new Presentation(session))
+  const mode = useSyncExternalStore(presentation.subscribe, presentation.getState)
   const pendingPaste = useRef(false)
   const state = useSyncExternalStore(session.subscribe, session.getState)
   const ui = useSyncExternalStore(controller.subscribe, controller.getState)
@@ -36,16 +41,53 @@ export default function App() {
     requestAnimationFrame(() => document.querySelector<HTMLElement>('.stage')?.focus())
   }, [])
 
+  // Present from the start or from this slide; Presenter view opens the audience's window. All
+  // from a click or key press: full screen and a second window need one.
+  const present = useCallback(
+    (from: 'start' | 'here') => {
+      controller.finishEditing()
+      controller.endNotes()
+      const here = session.getState().deck.slides.indexOf(session.currentSlide())
+      presentation.present(from === 'start' ? 0 : Math.max(0, here))
+    },
+    [controller, session, presentation],
+  )
+  const presenterView = useCallback(() => {
+    controller.finishEditing()
+    controller.endNotes()
+    if (presentation.presenterView(0)) return
+    void ask({
+      title: 'The audience window was blocked',
+      body: 'The browser stopped MySlides from opening a second window. Allow pop-ups for this page (look for the blocked pop-up sign in the address bar), then choose Presenter view again.',
+      buttons: [{ label: 'OK', value: 'ok', primary: true }],
+      cancelValue: 'ok',
+    })
+  }, [controller, presentation, ask])
+  // Back from presenting: the keyboard goes to the slide.
+  const presenting = mode.kind !== 'off'
+  const wasPresenting = useRef(false)
+  useEffect(() => {
+    if (wasPresenting.current && !presenting) {
+      requestAnimationFrame(() => document.querySelector<HTMLElement>('.stage, .grid-sorter [aria-current="true"]')?.focus())
+    }
+    wasPresenting.current = presenting
+  }, [presenting])
+
   useEffect(() => {
     session.start()
-    // A new version may apply by itself only while nothing has been done yet.
-    offline.setIdleCheck(() => session.isPristine())
+    // A new version may apply by itself only while nothing has been done yet, and never
+    // mid-presentation (spec: nothing interrupts a running presentation).
+    offline.setIdleCheck(() => session.isPristine() && !presentation.running)
     if (import.meta.env.VITE_E2E) {
       window.__mySlides = session
       window.__mySlidesCanvas = controller
+      window.__mySlidesPresent = presentation
     }
-    return () => session.dispose()
-  }, [session, controller])
+    return () => {
+      presentation.end()
+      session.dispose()
+    }
+  }, [session, controller, presentation])
 
   // Pictures come from the Picture button, pasting, or dropping a file on the slide.
   const addPicture = useCallback(
@@ -72,6 +114,7 @@ export default function App() {
   // copied items are pasted (Ctrl+V on the canvas lets this event through for that reason).
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
+      if (presentation.running) return e.preventDefault()
       // Some browsers list clipboard files under items rather than files.
       const files = [
         ...(e.clipboardData?.files ?? []),
@@ -90,7 +133,7 @@ export default function App() {
     }
     window.addEventListener('paste', onPaste)
     return () => window.removeEventListener('paste', onPaste)
-  }, [controller, addPicture])
+  }, [controller, addPicture, presentation])
 
   // A new deck opens with the cursor ready in the title (spec, UI). Only when a deck is put
   // in place: undoing back to an empty deck must not grab the keyboard.
@@ -105,16 +148,32 @@ export default function App() {
     const queue = (window as unknown as { launchQueue?: LaunchQueue }).launchQueue
     queue?.setConsumer((params) => {
       const handle = params.files[0]
-      if (handle && handle.kind === 'file') void session.openLaunchedFile(handle as FileSystemFileHandle)
+      if (!handle || handle.kind !== 'file') return
+      const openIt = () => void session.openLaunchedFile(handle as FileSystemFileHandle)
+      // Mid-presentation it waits: opening may ask about unsaved changes.
+      if (!presentation.running) return openIt()
+      const stop = presentation.subscribe(() => {
+        if (presentation.running) return
+        stop()
+        openIt()
+      })
     })
-  }, [session])
+  }, [session, presentation])
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (document.querySelector('dialog[open]')) return
+      // Presenting: the presentation has the keyboard.
+      if (presentation.running || document.querySelector('dialog[open]')) return
       const mod = (e.ctrlKey || e.metaKey) && !e.altKey
       const key = e.key.toLowerCase()
       const { editingId, editor, selected } = controller.getState()
+
+      // F5 presents from the start, Shift+F5 from this slide (never the browser's reload).
+      if (e.key === 'F5' && !mod && !e.altKey) {
+        e.preventDefault()
+        present(e.shiftKey ? 'here' : 'start')
+        return
+      }
 
       // Anywhere, even while typing.
       if (mod && key === 's') {
@@ -213,12 +272,39 @@ export default function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [session, controller, ask, view])
+  }, [session, controller, ask, view, presentation, present])
 
   const slide = session.currentSlide()
   const index = state.deck.slides.indexOf(slide)
+  const deck = state.deck
   return (
-    <div className="app">
+    <>
+      {mode.kind === 'present' && (
+        <PresentScreen
+          deck={deck}
+          media={session.getMedia()}
+          show={mode.show}
+          onAction={(a) => presentation.act(a)}
+          onExit={() => presentation.end()}
+          onKey={(e) => {
+            if (e.key !== 'Escape') return false
+            presentation.end()
+            return true
+          }}
+        />
+      )}
+      {mode.kind === 'presenter' && (
+        <PresenterView
+          deck={deck}
+          media={session.getMedia()}
+          show={mode.show}
+          audienceReady={mode.audienceReady}
+          onAction={(a) => presentation.act(a)}
+          onEnd={() => presentation.end()}
+        />
+      )}
+    {/* While presenting, the editor stays as it was, out of sight. */}
+    <div className="app" style={presenting ? { display: 'none' } : undefined}>
       <header className="chrome">
         <div className="topbar">
           <FileStatus state={state} />
@@ -227,6 +313,7 @@ export default function App() {
           </nav>
           <UpdateButton />
           <InstallButton appName="MySlides" />
+          <PresentButton onPresent={present} onPresenterView={presenterView} />
         </div>
         {view === 'editor' && (
           <Toolbar controller={controller} ask={ask} theme={state.deck.theme} onInsertPicture={() => void pickPicture()} />
@@ -272,6 +359,35 @@ export default function App() {
       </footer>
       {dialog}
     </div>
+    </>
+  )
+}
+
+/** Present (from the start), with a menu for the other ways to present. Two clicks at most. */
+function PresentButton({ onPresent, onPresenterView }: { onPresent: (from: 'start' | 'here') => void; onPresenterView: () => void }) {
+  return (
+    <span className="present-split">
+      <button
+        type="button"
+        className="present-btn"
+        title={tooltip('Present from the beginning', 'F5')}
+        aria-keyshortcuts="F5"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => onPresent('start')}
+      >
+        <Play size={16} aria-hidden="true" /> Present
+      </button>
+      <Popover menu label="More ways to present" className="present-more" trigger={<ChevronDown size={16} aria-hidden="true" />}>
+        {(close) => (
+          <>
+            <Item label="Present from the beginning" shortcut="F5" onSelect={() => { close(); onPresent('start') }} />
+            <Item label="Present from this slide" shortcut="Shift+F5" onSelect={() => { close(); onPresent('here') }} />
+            <div className="menu-sep" role="separator" />
+            <Item label="Presenter view (notes on this screen)" onSelect={() => { close(); onPresenterView() }} />
+          </>
+        )}
+      </Popover>
+    </span>
   )
 }
 
