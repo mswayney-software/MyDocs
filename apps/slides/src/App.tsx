@@ -4,12 +4,17 @@ import { InstallButton, OfflineStatus, Popover, UpdateButton, useDialogs } from 
 import { ChevronDown, LayoutGrid, Play } from 'lucide-react'
 import { pickImageFile } from '@mysuite/core/images'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { flushSync } from 'react-dom'
 import { Canvas } from './canvas/Canvas'
 import { CanvasController } from './canvas/controller'
 import { DeckSession, type SessionState } from './deck/session'
 import { Presentation } from './present/presentation'
 import { PresenterView } from './present/PresenterView'
 import { PresentScreen } from './present/PresentScreen'
+import { loadDeckFonts } from './present/fonts'
+import { applyPrintCss, pageMode, printCss, settled } from './print/print'
+import { PrintDeck } from './print/PrintDeck'
+import { confirmSavePdf } from './print/save-pdf'
 import { SorterView } from './sorter/SorterView'
 import { ChartDialog } from './ui/ChartDialog'
 import { NotesPane } from './ui/NotesPane'
@@ -64,6 +69,40 @@ export default function App() {
       cancelValue: 'ok',
     })
   }, [controller, presentation, ask])
+  // ---- Save as PDF ------------------------------------------------------------------
+  // The pages exist only while printing. The print rules stay in the page, so the browser's own
+  // Print menu prints the deck right too.
+  const [printing, setPrinting] = useState(false)
+  const pages = pageMode()
+  const { width: slideW, height: slideH } = state.deck.size
+  useEffect(() => applyPrintCss(printCss(pages, slideW, slideH)), [pages, slideW, slideH])
+  useEffect(() => {
+    // Print from the browser's menu: the pages appear just in time (pictures may still be
+    // decoding then; Save as PDF waits for them).
+    const before = () => {
+      controller.finishEditing()
+      flushSync(() => setPrinting(true))
+    }
+    const after = () => setPrinting(false)
+    window.addEventListener('beforeprint', before)
+    window.addEventListener('afterprint', after)
+    return () => {
+      window.removeEventListener('beforeprint', before)
+      window.removeEventListener('afterprint', after)
+    }
+  }, [controller])
+  const savePdf = useCallback(async () => {
+    controller.finishEditing()
+    controller.endNotes()
+    if (!(await confirmSavePdf(ask, pages))) return
+    flushSync(() => setPrinting(true))
+    loadDeckFonts(session.getState().deck)
+    // Every picture decoded and every font loaded before the print window takes its snapshot.
+    await settled(document.querySelector('.print-deck') ?? document)
+    await new Promise((r) => requestAnimationFrame(() => r(null)))
+    window.print()
+  }, [controller, session, ask, pages])
+
   // Back from presenting: the keyboard goes to the slide.
   const presenting = mode.kind !== 'off'
   const wasPresenting = useRef(false)
@@ -189,6 +228,12 @@ export default function App() {
         void session.open()
         return
       }
+      // Ctrl+P: Save as PDF, with the note first (never the browser's print of the editor screen).
+      if (mod && !e.shiftKey && key === 'p') {
+        e.preventDefault()
+        void savePdf()
+        return
+      }
       if (mod && !e.shiftKey && key === 'm') {
         e.preventDefault()
         controller.addSlide()
@@ -275,7 +320,7 @@ export default function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [session, controller, ask, view, presentation, present])
+  }, [session, controller, ask, view, presentation, present, savePdf])
 
   const slide = session.currentSlide()
   const index = state.deck.slides.indexOf(slide)
@@ -312,7 +357,7 @@ export default function App() {
         <div className="topbar">
           <FileStatus state={state} />
           <nav className="menubar" aria-label="Menus">
-            <FileMenu session={session} controller={controller} />
+            <FileMenu session={session} controller={controller} onSavePdf={() => void savePdf()} />
           </nav>
           <UpdateButton />
           <InstallButton appName="MySlides" />
@@ -378,6 +423,7 @@ export default function App() {
       )}
       {dialog}
     </div>
+    {printing && <PrintDeck deck={deck} media={session.getMedia()} />}
     </>
   )
 }
@@ -448,7 +494,7 @@ function Item({ label, shortcut, onSelect }: { label: string; shortcut?: string;
   )
 }
 
-function FileMenu({ session, controller }: { session: DeckSession; controller: CanvasController }) {
+function FileMenu({ session, controller, onSavePdf }: { session: DeckSession; controller: CanvasController; onSavePdf: () => void }) {
   return (
     <Popover
       menu
@@ -475,6 +521,15 @@ function FileMenu({ session, controller }: { session: DeckSession; controller: C
             <div className="menu-sep" role="separator" />
             <Item label="Save" shortcut="Mod+S" onSelect={pick(() => session.save())} />
             <Item label="Save as…" shortcut="Mod+Shift+S" onSelect={pick(() => session.saveAs())} />
+            <div className="menu-sep" role="separator" />
+            <Item
+              label="Save as PDF…"
+              shortcut="Mod+P"
+              onSelect={() => {
+                close()
+                onSavePdf()
+              }}
+            />
           </>
         )
       }}
