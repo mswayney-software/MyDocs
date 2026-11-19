@@ -132,3 +132,30 @@ export function contrast(a: string, b: string): number {
 
 /** Black or white, whichever reads better on this color (for labels drawn over a fill). */
 export const inkOn = (hex: string) => (contrast(hex, '#000000') >= contrast(hex, '#FFFFFF') ? '#000000' : '#FFFFFF')
+
+/** Text that reads best on `fill`: the theme's text or background color, white, or black. */
+export function readableOn(fill: string, theme: Theme) {
+  const choices = [theme.colors.text, theme.colors.background, '#FFFFFF', '#000000']
+  return choices.reduce((best, c) => (contrast(fill, c) > contrast(fill, best) ? c : best))
+}
+
+/** Mix two #RRGGBB colors; t = 0 gives a, 1 gives b. */
+export function mix(a: string, b: string, t: number) {
+  const pa = [1, 3, 5].map((i) => parseInt(a.slice(i, i + 2), 16))
+  const pb = [1, 3, 5].map((i) => parseInt(b.slice(i, i + 2), 16))
+  return '#' + pa.map((v, i) => Math.round(v + (pb[i] - v) * t).toString(16).padStart(2, '0')).join('').toUpperCase()
+}
+
+/**
+ * A table's header row: the first accent, with the text that reads best on it. If even that is
+ * under WCAG AA (4.5:1), the accent is shaded a little darker or lighter until it is.
+ */
+export function headerColors(theme: Theme) {
+  let bg = theme.colors.accent1
+  for (let i = 0; i < 12; i++) {
+    const fg = readableOn(bg, theme)
+    if (contrast(fg, bg) >= 4.5) return { bg, fg }
+    bg = mix(bg, contrast(fg, '#000000') > contrast(fg, '#FFFFFF') ? '#FFFFFF' : '#000000', 0.08)
+  }
+  return { bg, fg: readableOn(bg, theme) }
+}

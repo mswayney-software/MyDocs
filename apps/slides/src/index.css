@@ -123,8 +123,16 @@
    stay pickable. Unfilled shapes still count their inside; lines use a wide invisible stroke. */
 .slide-layer .el-shape { pointer-events: none; }
 .slide-layer .el-shape g > * { pointer-events: visible; }
-.el-table { border-collapse: collapse; table-layout: fixed; font-size: 16pt; }
-.el-table td { border: 1px solid #9a9a95; padding: 4px 8px; vertical-align: top; }
+.el-table { overflow: visible; }
+.el-table > .slide-text, .el-table .ProseMirror, .el-table .tableWrapper { height: 100%; }
+/* The same rules for the static table and the one being edited (their markup is the same). */
+.slide-table { border-collapse: collapse; table-layout: fixed; height: 100%; }
+.slide-table td, .slide-table th {
+  border: 1px solid var(--table-line); padding: 0.25em 0.45em; vertical-align: top;
+  text-align: left; font-weight: inherit; overflow-wrap: anywhere;
+}
+.slide-table th { background: var(--table-head-bg); color: var(--table-head-fg); font-weight: 700; }
+.slide-table .selectedCell { box-shadow: inset 0 0 0 9999px rgb(31 95 209 / 0.18); }
 .el-pending, .el-broken {
   display: grid; place-items: center; text-align: center; padding: 12px;
   font: 16px system-ui, sans-serif; color: #4a4a46;
@@ -286,3 +294,56 @@ kbd { font: 600 0.9em system-ui, sans-serif; padding: 1px 5px; border: 1px solid
 }
 .topbar-action ~ .present-split { margin-left: 8px; }
 .present-more .popover-panel { left: auto; right: 0; white-space: nowrap; }
+
+/* ---- charts ---------------------------------------------------------------------- */
+
+.el-chart svg { display: block; }
+.chart-dlg { width: min(1040px, calc(100vw - 32px)); max-width: none; }
+.chart-dlg-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.chart-dlg-head .dlg-title { margin: 0; }
+.chart-types { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.chart-type { border: 0; background: var(--sheet); color: var(--ink); padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+.chart-type + .chart-type { border-left: 1px solid var(--line); }
+.chart-type[aria-checked='true'] { background: var(--pressed); color: var(--pressed-ink); font-weight: 600; }
+.chart-dlg-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 400px); gap: 16px; }
+@media (max-width: 860px) { .chart-dlg-main { grid-template-columns: 1fr; } }
+.chart-grid-scroll { overflow: auto; max-height: 52vh; border: 1px solid var(--line); border-radius: 4px; }
+.chart-grid { border-collapse: collapse; font-size: 13px; }
+.chart-grid th, .chart-grid td { padding: 2px; border: 1px solid var(--line); vertical-align: top; text-align: left; font-weight: normal; }
+.chart-grid thead th { background: var(--chrome); }
+.chart-grid tbody th { background: var(--chrome); }
+.chart-grid input { width: 96px; height: 28px; padding: 0 6px; border: 1px solid transparent; border-radius: 3px; background: transparent; color: var(--ink); font: inherit; }
+.chart-grid input:focus { border-color: var(--focus); outline: none; background: var(--sheet); }
+.chart-grid .chart-num { text-align: right; font-variant-numeric: tabular-nums; }
+.chart-grid input[aria-invalid='true'] { border-color: #b3261e; background: #fdecea; color: #1d1d1b; }
+.chart-head { display: flex; align-items: center; }
+.chart-x { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 3px; background: transparent; color: var(--ink-soft); cursor: pointer; flex: none; }
+.chart-x:hover { background: var(--hover); color: var(--ink); }
+.chart-bad { display: block; padding: 0 6px 2px; font-size: 11px; color: #b3261e; }
+:root[data-theme='dark'] .chart-bad { color: #ff9b91; }
+.is-unused input { opacity: 0.55; }
+.chart-add { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.chart-grid .chart-add { margin: 0; }
+.chart-add:disabled { opacity: 0.5; cursor: default; }
+.chart-note, .chart-hint { margin: 0 0 6px; font-size: 12px; color: var(--ink-soft); }
+.chart-hint { margin-top: 6px; }
+.chart-preview { border: 1px solid var(--line); border-radius: 4px; overflow: hidden; color-scheme: light; }
+.chart-preview svg { display: block; width: 100%; height: auto; }
+.chart-options { margin-top: 12px; }
+.chart-options .dlg-field input { height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); color: var(--ink); font: inherit; font-size: 14px; }
+.chart-options .dlg-check { margin-bottom: 12px; }
+.chart-axes { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.chart-dlg-foot { margin-top: 12px; align-items: center; }
+.chart-bad-note { margin: 0 auto 0 0; font-size: 13px; color: #b3261e; }
+:root[data-theme='dark'] .chart-bad-note { color: #ff9b91; }
+
+/* ---- tables ---------------------------------------------------------------------- */
+
+/* A grip on each line between a selected table's columns (constant screen width, like handles). */
+.col-edge { position: absolute; width: calc(10px * var(--inv)); margin-left: calc(-5px * var(--inv)); cursor: col-resize; z-index: 3; }
+.col-edge::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: calc(2px * var(--inv)); margin-left: calc(-1px * var(--inv)); background: var(--focus); opacity: 0; }
+.col-edge:hover::after { opacity: 0.8; }
+.el-table.el-live { cursor: text; }
+.table-size { display: grid; grid-template-columns: auto 72px; gap: 8px 10px; align-items: center; padding: 8px; font-size: 13px; }
+.table-size input { height: 30px; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); color: var(--ink); font: inherit; }
+.table-size .dlg-btn { grid-column: 1 / -1; }

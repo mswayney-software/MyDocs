@@ -1,10 +1,12 @@
 import { EditorContent, useEditor } from '@tiptap/react'
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type PointerEvent as ReactPointerEvent } from 'react'
 import type { Media } from '../deck/media'
-import type { Slide, TextElement, Theme } from '../deck/schema'
-import { placeholderHint, textBoxStyle } from '../slide/style'
+import type { Slide, TableElement, TextElement, Theme } from '../deck/schema'
+import { fitWidths, gridToDoc } from '../elements/table-doc'
+import { placeholderHint, tableStyle, textBoxStyle } from '../slide/style'
 import { SlideView } from '../slide/SlideView'
 import { slideTextExtensions } from '../text/extensions'
+import { slideTableExtensions } from '../text/table-extensions'
 import { SNAP_PX, type CanvasController } from './controller'
 import { HANDLES, lineEnds, resizeBox, round, type Box, type Handle } from './geometry'
 
@@ -16,6 +18,8 @@ type Press =
   | { kind: 'resize'; x: number; y: number; id: string; handle: Handle; base: Box; keepRatio: boolean; minH: number }
   /** Dragging one end of a line or arrow; `fixed` is the other end, in slide units. */
   | { kind: 'end'; x: number; y: number; id: string; which: 'from' | 'to'; moving: Pt; fixed: Pt }
+  /** Dragging the edge between table columns `index` and `index + 1`; `start` is that column's width. */
+  | { kind: 'column'; x: number; y: number; id: string; index: number; start: number }
   /** Drawing a selection rectangle from an empty part of the slide. */
   | { kind: 'marquee'; x: number; y: number; start: Pt; add: boolean; moved: boolean }
 
@@ -88,9 +92,19 @@ export function Canvas({ controller, slide, theme, media, size, onDropPicture }:
     const target = e.target as HTMLElement
     // Inside the live editor, the editor handles the pointer (placing the caret, selecting).
     if (target.closest('.ProseMirror')) return
+    const sel = ui.selected
+    const column = target.closest<HTMLElement>('[data-column]')?.dataset.column
+    if (column !== undefined && sel.length === 1) {
+      const el = slide.elements.find((x) => x.id === sel[0])
+      if (el?.type !== 'table') return
+      const index = Number(column)
+      press.current = { kind: 'column', x: e.clientX, y: e.clientY, id: el.id, index, start: fitWidths(el.columnWidths, el.w)[index] }
+      e.currentTarget.setPointerCapture(e.pointerId)
+      e.preventDefault()
+      return
+    }
     const handle = target.closest<HTMLElement>('[data-handle]')?.dataset.handle as Handle | undefined
     const end = target.closest<HTMLElement>('[data-end]')?.dataset.end as 'from' | 'to' | undefined
-    const sel = ui.selected
     if (end && sel.length === 1) {
       const el = slide.elements.find((x) => x.id === sel[0])
       if (!el || el.type !== 'shape') return
@@ -154,6 +168,10 @@ export function Canvas({ controller, slide, theme, media, size, onDropPicture }:
       setMarquee({ x: Math.min(p.start.x, now.x), y: Math.min(p.start.y, now.y), w: Math.abs(now.x - p.start.x), h: Math.abs(now.y - p.start.y) })
       return
     }
+    if (p.kind === 'column') {
+      controller.setColumnEdge(p.id, p.index, round(p.start + dx))
+      return
+    }
     if (p.kind === 'end') {
       let to = { x: p.moving.x + dx, y: p.moving.y + dy }
       // Shift keeps the line level, upright, or at 45 degrees.
@@ -206,19 +224,21 @@ export function Canvas({ controller, slide, theme, media, size, onDropPicture }:
       }
       return
     }
-    if (p.kind === 'resize' || p.kind === 'end' || p.dragging) {
+    if (p.kind === 'resize' || p.kind === 'end' || p.kind === 'column' || p.dragging) {
       controller.endDrag()
       return
     }
     // A click on a text box that was already selected starts typing where it was clicked.
     const el = slide.elements.find((x) => x.id === p.id)
-    if (p.wasOnlySelection && el?.type === 'text') controller.startEditing(el.id, { x: e.clientX, y: e.clientY })
+    if (p.wasOnlySelection && (el?.type === 'text' || el?.type === 'table')) controller.startEditing(el.id, { x: e.clientX, y: e.clientY })
   }
 
   const onDoubleClick = (e: React.MouseEvent) => {
     const id = (e.target as HTMLElement).closest<HTMLElement>('[data-id]')?.dataset.id
     const el = slide.elements.find((x) => x.id === id)
     if (el?.type === 'text' && ui.editingId !== el.id) controller.startEditing(el.id, { x: e.clientX, y: e.clientY })
+    else if (el?.type === 'table' && ui.editingId !== el.id) controller.startEditing(el.id, { x: e.clientX, y: e.clientY })
+    else if (el?.type === 'chart') controller.openChart(el.id)
   }
 
   const editing = slide.elements.find((x) => x.id === ui.editingId)
@@ -271,6 +291,7 @@ export function Canvas({ controller, slide, theme, media, size, onDropPicture }:
         >
           <SlideView slide={slide} theme={theme} media={media} hints hiddenId={ui.editingId} />
           {editing?.type === 'text' && <LiveTextBox key={editing.id} el={editing} theme={theme} controller={controller} />}
+          {editing?.type === 'table' && <LiveTable key={editing.id} el={editing} theme={theme} controller={controller} />}
           {selected.map((el) => (
             <div
               key={el.id}
@@ -285,6 +306,7 @@ export function Canvas({ controller, slide, theme, media, size, onDropPicture }:
             </div>
           ))}
           {selected.length === 1 && selected[0].type === 'shape' && isLine(selected[0]) && <LineEnds el={selected[0]} />}
+          {selected.length === 1 && selected[0].type === 'table' && ui.editingId !== selected[0].id && <ColumnEdges el={selected[0]} />}
           {marquee && (
             <div className="marquee" style={{ left: marquee.x, top: marquee.y, width: marquee.w, height: marquee.h }} aria-hidden="true" />
           )}
@@ -341,6 +363,57 @@ function LiveTextBox({ el, theme, controller }: { el: TextElement; theme: Theme;
 
   return (
     <div className="el el-text el-live" style={{ left: el.x, top: el.y, width: el.w, height: el.h, ...textBoxStyle(el, theme) }}>
+      <EditorContent editor={editor} />
+    </div>
+  )
+}
+
+/** Grips on the lines between a selected table's columns: drag one to share width between two columns. */
+function ColumnEdges({ el }: { el: TableElement }) {
+  const widths = fitWidths(el.columnWidths, el.w)
+  const edges = widths.slice(0, -1).map((_, i) => el.x + widths.slice(0, i + 1).reduce((a, b) => a + b, 0))
+  return (
+    <>
+      {edges.map((x, i) => (
+        <div key={i} className="col-edge" data-column={i} style={{ left: x, top: el.y, height: el.h }} aria-hidden="true" title="Drag to change the column widths" />
+      ))}
+    </>
+  )
+}
+
+/** The one live editor on a table: the same markup as the static table, now editable. */
+function LiveTable({ el, theme, controller }: { el: TableElement; theme: Theme; controller: CanvasController }) {
+  const box = useRef<HTMLDivElement>(null)
+  const editor = useEditor({
+    extensions: slideTableExtensions(el.w),
+    content: gridToDoc(el),
+    immediatelyRender: true,
+    shouldRerenderOnTransaction: false,
+    editorProps: {
+      attributes: { class: 'slide-text', role: 'textbox', 'aria-multiline': 'true', 'aria-label': 'Table: Tab moves to the next cell', spellcheck: 'true' },
+    },
+  })
+
+  useLayoutEffect(() => {
+    controller.attachEditor(editor)
+    // The table's own height, without the box stretching it: the box grows to fit after editing.
+    controller.attachTableMeasure(() => {
+      const table = box.current?.querySelector<HTMLElement>('table')
+      if (!table) return el.h
+      const was = table.style.height
+      table.style.height = 'auto'
+      const h = table.offsetHeight
+      table.style.height = was
+      return h
+    })
+    return () => {
+      controller.attachEditor(null)
+      controller.attachTableMeasure(null)
+    }
+  }, [controller, editor, el.h])
+
+  return (
+    <div ref={box} className="el el-table el-live" style={{ left: el.x, top: el.y, width: el.w, height: el.h, ...tableStyle(theme) }}>
       <EditorContent editor={editor} />
     </div>
   )

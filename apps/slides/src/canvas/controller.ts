@@ -2,10 +2,11 @@ import type { Editor } from '@tiptap/core'
 import { newId, textBox } from '../deck/defaults'
 import { applyLayout, layoutById, slideWithLayout } from '../deck/layouts'
 import type { Media } from '../deck/media'
-import type { Color, Element, SHAPES, Slide, Transition } from '../deck/schema'
+import { LIMITS, type ChartElement, type Color, type Element, type SHAPES, type Slide, type TableElement, type Transition } from '../deck/schema'
 import { themeForDeck } from '../deck/themes'
 import type { DeckSession } from '../deck/session'
 import { shrinkImage } from '@mysuite/core/images'
+import { docToGrid, emptyGrid, fitWidths } from '../elements/table-doc'
 import { copySlide, gapForStep, moveToGap, rangeIds, sameOrder } from '../sorter/order'
 import { align, distribute, restack, type AlignKind, type StackMove } from './arrange'
 import { bounds, MIN_SIZE, round, snapMove, type Box, type Guides } from './geometry'
@@ -13,7 +14,7 @@ import { bounds, MIN_SIZE, round, snapMove, type Box, type Guides } from './geom
 export interface UiState {
   /** Selected elements on the current slide. */
   selected: string[]
-  /** The text box being edited live; null when none. */
+  /** The text box or table being edited live; null when none. */
   editingId: string | null
   /** Alignment guides to draw during a drag. */
   guides: Guides | null
@@ -24,6 +25,27 @@ export interface UiState {
    * slide actions (duplicate, delete, move) act on these.
    */
   slides: string[]
+  /**
+   * The chart data window, while open: for the chart with this id, or for a new chart (null).
+   * Nothing is in the deck until Apply.
+   */
+  chart: { id: string | null } | null
+}
+
+/** A chart's data and settings: what the chart data window edits. */
+export type ChartEdit = Pick<ChartElement, 'chartType' | 'title' | 'alt' | 'categories' | 'series' | 'options'>
+
+/** What a new chart starts with, ready to be typed over. */
+export const SAMPLE_CHART: ChartEdit = {
+  chartType: 'bar',
+  title: '',
+  alt: '',
+  categories: ['Group 1', 'Group 2', 'Group 3'],
+  series: [
+    { name: 'Series 1', values: [4, 7, 5] },
+    { name: 'Series 2', values: [3, 5, 8] },
+  ],
+  options: { legend: true, xTitle: '', yTitle: '' },
 }
 
 /** Pictures are stored at most this many pixels on their long side (spec, decision 5). */
@@ -39,6 +61,28 @@ const NUDGE_MERGE_MS = 700
 export const NOTES_MERGE_MS = 1000
 /** Each paste lands this far from the last, so copies don't hide each other. */
 const PASTE_OFFSET = 20
+/** A table column is never narrower than this (slide units). */
+export const MIN_COLUMN = 40
+/** Height of a new table's rows, slide units. */
+const NEW_ROW_H = 40
+
+/** The editor adds default attributes (textAlign: null...) that change nothing on screen. */
+function stripDefaults(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(stripDefaults)
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, val] of Object.entries(v)) {
+      if (k === 'attrs') {
+        const kept = Object.fromEntries(Object.entries(val as object).filter(([, x]) => x !== null))
+        if (Object.keys(kept).length) out.attrs = kept
+      } else out[k] = stripDefaults(val)
+    }
+    return out
+  }
+  return v
+}
+const sameContent = (a: unknown, b: unknown) => JSON.stringify(stripDefaults(a)) === JSON.stringify(stripDefaults(b))
+
 /** Snap distance in screen pixels (converted to slide units by the canvas scale). */
 export const SNAP_PX = 8
 
@@ -64,13 +108,15 @@ export class CanvasController {
   /** What the editor started with, to tell whether anything changed. */
   private editStart: unknown = null
   /** Where to put the caret once the editor exists: a click point, or a character typed to start. */
-  private pendingCaret: { x: number; y: number } | { char: string } | 'end' | 'all' | null = null
+  private pendingCaret: { x: number; y: number } | { char: string } | 'start' | 'end' | 'all' | null = null
+  /** The live table's natural height in slide units (set by the table editor while it exists). */
+  private measureTable: (() => number) | null = null
   readonly session: DeckSession
 
   constructor(session: DeckSession) {
     this.session = session
     this.lastSlideId = session.getState().slideId
-    this.state = { selected: [], editingId: null, guides: null, editor: null, slides: [this.lastSlideId] }
+    this.state = { selected: [], editingId: null, guides: null, editor: null, slides: [this.lastSlideId], chart: null }
     session.subscribe(this.onSession)
   }
 
@@ -142,14 +188,14 @@ export class CanvasController {
 
   // ---- text editing -------------------------------------------------------------------
 
-  /** Edit a text box: mount the one live editor on it. */
+  /** Edit a text box or a table's cells: mount the one live editor on it. */
   startEditing(id: string, caret: CanvasController['pendingCaret'] = 'end') {
     const el = this.elements().find((e) => e.id === id)
-    if (!el || el.type !== 'text') return
+    if (!el || (el.type !== 'text' && el.type !== 'table')) return
     if (this.state.editingId === id) return
     this.finishEditing()
     this.pendingCaret = caret
-    this.editStart = el.content
+    this.editStart = el.type === 'text' ? el.content : { headerRow: el.headerRow, columnWidths: el.columnWidths, rows: el.rows }
     this.set({ selected: [id], editingId: id })
   }
 
@@ -161,6 +207,7 @@ export class CanvasController {
     const caret = this.pendingCaret
     this.pendingCaret = null
     if (caret === 'all') editor.commands.selectAll()
+    else if (caret === 'start') editor.commands.focus('start')
     else if (caret && typeof caret === 'object' && 'x' in caret) {
       const pos = editor.view.posAtCoords({ left: caret.x, top: caret.y })
       if (pos) editor.commands.setTextSelection(pos.pos)
@@ -194,9 +241,14 @@ export class CanvasController {
     this.endNotes()
     const { editingId, editor } = this.state
     if (!editingId) return
+    const editingEl = this.elements().find((e) => e.id === editingId)
+    if (editingEl?.type === 'table') {
+      this.finishTable(editingEl)
+      return
+    }
     if (editor && !editor.isDestroyed) {
       const json = editor.getJSON()
-      if (JSON.stringify(json) !== JSON.stringify(this.editStart) && !this.sameText(json)) {
+      if (JSON.stringify(json) !== JSON.stringify(this.editStart) && !sameContent(json, this.editStart)) {
         this.session.update((deck) => {
           const el = deck.slides.find((s) => s.id === this.session.getState().slideId)?.elements.find((e) => e.id === editingId)
           if (el && el.type === 'text') el.content = json as typeof el.content
@@ -206,23 +258,32 @@ export class CanvasController {
     this.dropEditor()
   }
 
-  /** The editor adds default attributes (textAlign: null...) that change nothing on screen. */
-  private sameText(json: unknown) {
-    const strip = (v: unknown): unknown => {
-      if (Array.isArray(v)) return v.map(strip)
-      if (v && typeof v === 'object') {
-        const out: Record<string, unknown> = {}
-        for (const [k, val] of Object.entries(v)) {
-          if (k === 'attrs') {
-            const kept = Object.fromEntries(Object.entries(val as object).filter(([, x]) => x !== null))
-            if (Object.keys(kept).length) out.attrs = kept
-          } else out[k] = strip(val)
-        }
-        return out
+  /**
+   * Stop editing a table: its cells go into the deck as one undo step. The table grows to fit its
+   * text, and fits its rows again when rows were added or removed.
+   */
+  private finishTable(el: TableElement) {
+    const editor = this.state.editor
+    if (editor && !editor.isDestroyed) {
+      const grid = docToGrid(editor.getJSON(), el.w)
+      const natural = this.measureTable?.() ?? el.h
+      const rowsChanged = grid !== null && grid.rows.length !== el.rows.length
+      const h = Math.round(rowsChanged ? natural : Math.max(el.h, natural))
+      if (grid && (!sameContent(grid, this.editStart) || h !== el.h)) {
+        const slideId = this.session.getState().slideId
+        this.session.update((deck) => {
+          const t = deck.slides.find((s) => s.id === slideId)?.elements.find((e) => e.id === el.id)
+          // Stored without the editor's empty settings, so deck.json stays plain.
+          if (t?.type === 'table') Object.assign(t, stripDefaults(grid), { h })
+        })
       }
-      return v
     }
-    return JSON.stringify(strip(json)) === JSON.stringify(strip(this.editStart))
+    this.dropEditor()
+  }
+
+  /** Called by the table editor: how tall its table is with nothing stretching it. */
+  attachTableMeasure(measure: (() => number) | null) {
+    this.measureTable = measure
   }
 
   private dropEditor() {
@@ -301,6 +362,8 @@ export class CanvasController {
     this.session.beginGesture()
     this.session.update((deck) => {
       const el = deck.slides.find((s) => s.id === this.session.getState().slideId)?.elements.find((e) => e.id === id)
+      // A table's columns stretch with it.
+      if (el?.type === 'table' && b.w !== el.w) el.columnWidths = fitWidths(el.columnWidths, b.w)
       if (el) Object.assign(el, b)
     })
     this.set({ guides: guides.x.length || guides.y.length ? guides : null })
@@ -372,6 +435,90 @@ export class CanvasController {
       deck.slides.find((s) => s.id === this.session.getState().slideId)?.elements.push(el)
     })
     this.set({ selected: [el.id] })
+  }
+
+  // ---- tables -------------------------------------------------------------------------
+
+  /** Add an empty table in the middle of the slide, with a header row, and start typing in it. */
+  insertTable(rows: number, cols: number) {
+    this.finishEditing()
+    rows = Math.max(1, Math.min(LIMITS.tableRows, Math.round(rows)))
+    cols = Math.max(1, Math.min(LIMITS.tableColumns, Math.round(cols)))
+    const { width: W, height: H } = this.session.getState().deck.size
+    const w = Math.min(1120, cols * 180)
+    const h = Math.min(H - 80, rows * NEW_ROW_H)
+    const el: TableElement = { id: newId('e'), type: 'table', x: round((W - w) / 2), y: round(Math.max(40, (H - h) / 2)), w, h, ...emptyGrid(rows, cols, w) }
+    this.session.update((deck) => {
+      deck.slides.find((s) => s.id === this.session.getState().slideId)?.elements.push(el)
+    })
+    this.set({ selected: [el.id] })
+    this.startEditing(el.id, 'start')
+  }
+
+  /**
+   * Drag a column's right edge: that column and the next share their width, so the table keeps
+   * its own. Part of a gesture (one undo step per drag).
+   */
+  setColumnEdge(id: string, index: number, width: number) {
+    this.session.beginGesture()
+    const slideId = this.session.getState().slideId
+    this.session.update((deck) => {
+      const t = deck.slides.find((s) => s.id === slideId)?.elements.find((e) => e.id === id)
+      if (t?.type !== 'table' || index < 0 || index >= t.columnWidths.length - 1) return
+      const widths = fitWidths(t.columnWidths, t.w)
+      const pair = widths[index] + widths[index + 1]
+      const left = round(Math.max(MIN_COLUMN, Math.min(pair - MIN_COLUMN, width)))
+      widths[index] = left
+      widths[index + 1] = round(pair - left)
+      t.columnWidths = widths
+    })
+  }
+
+  // ---- charts -------------------------------------------------------------------------
+
+  /** Open the chart data window: for a chart on this slide, or (no id) for a new one. */
+  openChart(id?: string) {
+    this.finishEditing()
+    const el = id ? this.elements().find((e) => e.id === id) : undefined
+    if (id && el?.type !== 'chart') return
+    this.set({ chart: { id: id ?? null } })
+  }
+
+  closeChart() {
+    if (this.state.chart) this.set({ chart: null })
+  }
+
+  /** The chart the data window is editing, or the sample for a new one. */
+  chartToEdit(): ChartEdit {
+    const id = this.state.chart?.id
+    const el = id ? this.elements().find((e) => e.id === id) : undefined
+    if (el?.type !== 'chart') return structuredClone(SAMPLE_CHART)
+    const { chartType, title, alt, categories, series, options } = el
+    return structuredClone({ chartType, title, alt, categories, series, options })
+  }
+
+  /** Apply in the chart data window: a new chart goes on the slide, an existing one redraws. One undo step. */
+  applyChart(data: ChartEdit) {
+    const target = this.state.chart
+    if (!target) return
+    const slideId = this.session.getState().slideId
+    if (target.id) {
+      const id = target.id
+      this.session.update((deck) => {
+        const el = deck.slides.find((s) => s.id === slideId)?.elements.find((e) => e.id === id)
+        if (el?.type === 'chart') Object.assign(el, structuredClone(data))
+      })
+      this.set({ chart: null, selected: [id] })
+      return
+    }
+    const { width: W, height: H } = this.session.getState().deck.size
+    const w = 720
+    const h = 440
+    const el: ChartElement = { id: newId('e'), type: 'chart', x: round((W - w) / 2), y: round((H - h) / 2), w, h, ...structuredClone(data) }
+    this.session.update((deck) => {
+      deck.slides.find((s) => s.id === slideId)?.elements.push(el)
+    })
+    this.set({ chart: null, selected: [el.id] })
   }
 
   /** Fill, outline color or outline width of the selected shapes. One undo step. */

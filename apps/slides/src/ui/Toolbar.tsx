@@ -7,16 +7,18 @@ import { useEditorState } from '@tiptap/react'
 import {
   AlignVerticalJustifyCenter, AlignVerticalJustifyEnd, AlignVerticalJustifyStart, Baseline, Bold, Highlighter, Italic, Link,
   List, ListIndentDecrease, ListIndentIncrease, ListOrdered, Redo2, SquarePlus, Strikethrough, TextAlignCenter, TextAlignEnd,
-  ImagePlus, TextAlignJustify, TextAlignStart, Trash2, Type, Underline, Undo2,
+  ChartColumn, ImagePlus, TextAlignJustify, TextAlignStart, Trash2, Type, Underline, Undo2,
 } from 'lucide-react'
 import { useSyncExternalStore, type ReactNode } from 'react'
 import { editAltText } from './alt'
 import { DesignPickers } from './DesignPickers'
+import { TableInsert, TableTools } from './TableTools'
+import { cellAlign } from '../text/table-extensions'
 import { ArrangeMenu, ShapeMenu, ShapeStyle } from './ObjectTools'
 import { editLinkDialog } from './link'
 import type { CanvasController } from '../canvas/controller'
 import type { ImageElement, ShapeElement, Theme } from '../deck/schema'
-import { textDefaults } from '../slide/style'
+import { TABLE_TEXT_PT, textDefaults } from '../slide/style'
 import { FONT_SIZES, LINE_SPACINGS } from '../text/extensions'
 import { SLIDE_FONTS } from '../text/fonts'
 
@@ -95,9 +97,19 @@ export function Toolbar({ controller, ask, theme, onInsertPicture }: {
           <ImagePlus {...ICON} />
         </Btn>
         <ShapeMenu controller={controller} />
+        <TableInsert controller={controller} />
+        <Btn label="Chart" onClick={() => controller.openChart()}>
+          <ChartColumn {...ICON} />
+        </Btn>
       </span>
       {ui.editor && editingEl?.type === 'text' ? (
         <TextTools editor={ui.editor} ask={ask} defaults={textDefaults(editingEl.role, theme)} />
+      ) : ui.editor && editingEl?.type === 'table' ? (
+        <>
+          <TextTools editor={ui.editor} ask={ask} defaults={{ ...textDefaults(undefined, theme), size: TABLE_TEXT_PT }} table />
+          <Sep />
+          <TableTools editor={ui.editor} theme={theme} />
+        </>
       ) : selected.length > 0 ? (
         <>
           <Sep />
@@ -123,6 +135,20 @@ export function Toolbar({ controller, ask, theme, onInsertPicture }: {
           )}
           {selected.every((e) => e.type === 'shape') && (
             <ShapeStyle controller={controller} shapes={selected as ShapeElement[]} theme={theme} />
+          )}
+          {selected.length === 1 && selected[0].type === 'chart' && (
+            <span className="tb-group">
+              <button
+                type="button"
+                className="tb-btn tb-text-btn"
+                title="Edit the chart's numbers, type and labels (Enter)"
+                aria-keyshortcuts="Enter"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => controller.openChart(selected[0].id)}
+              >
+                Edit chart
+              </button>
+            </span>
           )}
           {selected.length === 1 && selected[0].type === 'image' && (
             <span className="tb-group">
@@ -175,7 +201,13 @@ const parsePt = (v: unknown) => {
   return Number.isFinite(n) ? n : null
 }
 
-function TextTools({ editor, ask, defaults }: { editor: Editor; ask: Ask; defaults: ReturnType<typeof textDefaults> }) {
+function TextTools({ editor, ask, defaults, table }: {
+  editor: Editor
+  ask: Ask
+  defaults: ReturnType<typeof textDefaults>
+  /** In a table, alignment is the cell's (left, center, right), not the paragraph's. */
+  table?: boolean
+}) {
   const s = useEditorState({
     editor,
     selector: ({ editor: e }) => {
@@ -189,7 +221,7 @@ function TextTools({ editor, ask, defaults }: { editor: Editor; ask: Ask; defaul
         italic: e.isActive('italic'),
         underline: e.isActive('underline'),
         strike: e.isActive('strike'),
-        align: (['center', 'right', 'justify'] as const).find((a) => e.isActive({ textAlign: a })) ?? 'left',
+        align: table ? cellAlign(e) : ((['center', 'right', 'justify'] as const).find((a) => e.isActive({ textAlign: a })) ?? 'left'),
         lineHeight: (e.state.selection.$from.parent.attrs.lineHeight as number | null) ?? null,
         bullets: e.isActive('bulletList'),
         numbers: e.isActive('orderedList'),
@@ -255,8 +287,16 @@ function TextTools({ editor, ask, defaults }: { editor: Editor; ask: Ask; defaul
             ['right', 'Align right', 'Mod+Shift+R', <TextAlignEnd key="r" {...ICON} />],
             ['justify', 'Justify', 'Mod+Shift+J', <TextAlignJustify key="j" {...ICON} />],
           ] as const
-        ).map(([v, label, sc, icon]) => (
-          <Btn key={v} label={label} shortcut={sc} active={s.align === v} onClick={() => run().setTextAlign(v).run()}>
+        )
+          .filter(([v]) => !table || v !== 'justify')
+          .map(([v, label, sc, icon]) => (
+          <Btn
+            key={v}
+            label={label}
+            shortcut={table ? undefined : sc}
+            active={s.align === v}
+            onClick={() => (table ? run().setCellAttribute('align', v === 'left' ? null : v).run() : run().setTextAlign(v).run())}
+          >
             {icon}
           </Btn>
         ))}

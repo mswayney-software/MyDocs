@@ -64,9 +64,11 @@ const LineHeight = Extension.create({
  * format allows (docs/FILE_FORMAT.md, Rich text). Pasted content outside it is reduced to it.
  * The live editor and the static renderer use this same list, so text looks the same in both.
  */
-export function slideTextExtensions(): Extensions {
+export function slideTextExtensions({ table = false }: { table?: boolean } = {}): Extensions {
   return [
     StarterKit.configure({
+      // A table's editor has its own document: the table and nothing else (table-extensions.ts).
+      document: table ? false : undefined,
       heading: false,
       blockquote: false,
       code: false,

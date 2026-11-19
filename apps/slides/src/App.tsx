@@ -11,6 +11,7 @@ import { Presentation } from './present/presentation'
 import { PresenterView } from './present/PresenterView'
 import { PresentScreen } from './present/PresentScreen'
 import { SorterView } from './sorter/SorterView'
+import { ChartDialog } from './ui/ChartDialog'
 import { NotesPane } from './ui/NotesPane'
 import { SlideStrip } from './ui/SlideStrip'
 import { editLinkDialog } from './ui/link'
@@ -260,6 +261,8 @@ export default function App() {
       else if (e.key === 'Delete' || e.key === 'Backspace') controller.deleteSelected()
       else if (e.key === 'Escape') controller.clearSelection()
       else if ((e.key === 'Enter' || e.key === 'F2') && one?.type === 'text') controller.startEditing(one.id, 'end')
+      else if ((e.key === 'Enter' || e.key === 'F2') && one?.type === 'chart') controller.openChart(one.id)
+      else if ((e.key === 'Enter' || e.key === 'F2') && one?.type === 'table') controller.startEditing(one.id, 'start')
       else if (e.key === 'Tab' && (e.target as HTMLElement | null)?.classList?.contains('stage')) controller.cycle(e.shiftKey ? -1 : 1)
       // Typing a letter on a selected text box starts editing it, with that letter.
       else if (one?.type === 'text' && !mod && e.key.length === 1) controller.startEditing(one.id, { char: e.key })
@@ -357,6 +360,22 @@ export default function App() {
           <OfflineStatus />
         </span>
       </footer>
+      {ui.chart && (
+        <ChartDialog
+          key={ui.chart.id ?? 'new'}
+          initial={controller.chartToEdit()}
+          isNew={!ui.chart.id}
+          theme={state.deck.theme}
+          onApply={(c) => {
+            controller.applyChart(c)
+            requestAnimationFrame(() => document.querySelector<HTMLElement>('.stage')?.focus())
+          }}
+          onCancel={() => {
+            controller.closeChart()
+            requestAnimationFrame(() => document.querySelector<HTMLElement>('.stage')?.focus())
+          }}
+        />
+      )}
       {dialog}
     </div>
     </>

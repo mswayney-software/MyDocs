@@ -3,7 +3,7 @@ import { newDeck } from './defaults'
 import { applyLayout, hasText, LAYOUTS, slideWithLayout } from './layouts'
 import { readDeckJson, deckToJson } from './read'
 import type { TextElement } from './schema'
-import { contrast, THEMES, themeForDeck } from './themes'
+import { contrast, headerColors, THEMES, themeForDeck } from './themes'
 
 const text = (s: string) => ({ type: 'doc' as const, content: [{ type: 'paragraph' as const, content: [{ type: 'text' as const, text: s }] }] })
 
@@ -17,6 +17,13 @@ describe('themes', () => {
   it.each(THEMES.map((t) => [t.name, t] as const))('%s: body text and headings meet WCAG AA (4.5:1) on the background', (_, t) => {
     expect(contrast(t.colors.text, t.colors.background)).toBeGreaterThanOrEqual(4.5)
     expect(contrast(t.colors.heading, t.colors.background)).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it.each(THEMES.map((t) => [t.name, t] as const))('%s: a table header row (first accent) has AA text on it', (_, t) => {
+    const { bg, fg } = headerColors(t)
+    expect(contrast(fg, bg)).toBeGreaterThanOrEqual(4.5)
+    // Still the theme's accent, at most lightly shaded.
+    expect(contrast(bg, t.colors.accent1)).toBeLessThan(1.3)
   })
 
   it('uses only bundled fonts', () => {

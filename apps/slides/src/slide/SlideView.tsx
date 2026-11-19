@@ -3,8 +3,11 @@ import { lineEnds } from '../canvas/geometry'
 import type { Media } from '../deck/media'
 import type { Element, ShapeElement, Slide, TableElement, Theme } from '../deck/schema'
 import { isEmptyText, richTextHtml } from '../text/extensions'
+import { chartLabel } from '../elements/chart-layout'
+import { ChartSvg } from '../elements/ChartView'
 import { pictureUrl } from './pictures'
-import { placeholderHint, resolveColor, textBoxStyle } from './style'
+import { tableHtml } from '../text/table-extensions'
+import { placeholderHint, resolveColor, tableStyle, textBoxStyle } from './style'
 
 const box = (el: { x: number; y: number; w: number; h: number }): CSSProperties => ({
   left: el.x,
@@ -64,10 +67,9 @@ const ElementView = memo(function ElementView({ el, theme, media, hints }: { el:
     case 'table':
       return <TableView el={el} theme={theme} />
     case 'chart':
-      // Drawn from its data in Phase 6.
       return (
-        <div className="el el-pending" data-id={el.id} style={box(el)} role="img" aria-label={el.alt || 'Chart'}>
-          Chart{el.title ? `: ${el.title}` : ''}
+        <div className="el el-chart" data-id={el.id} style={box(el)} role="img" aria-label={chartLabel(el)}>
+          <ChartSvg chart={el} theme={theme} width={el.w} height={el.h} />
         </div>
       )
     case 'broken':
@@ -157,31 +159,11 @@ function arrowHead(from: { x: number; y: number }, to: { x: number; y: number },
   return `${to.x},${to.y} ${bx + px},${by + py} ${bx - px},${by - py}`
 }
 
-/** Basic table drawing; its full styling and editing arrive in Phase 6. */
+/** A table, drawn from the same markup its editor makes, so it looks the same while typing. */
 function TableView({ el, theme }: { el: TableElement; theme: Theme }) {
-  const total = el.columnWidths.reduce((a, b) => a + b, 0) || 1
   return (
-    <table className="el el-table" data-id={el.id} style={{ ...box(el), fontFamily: `'${theme.fonts.body}', sans-serif`, color: theme.colors.text }}>
-      <colgroup>
-        {el.columnWidths.map((w, i) => (
-          <col key={i} style={{ width: `${(w / total) * 100}%` }} />
-        ))}
-      </colgroup>
-      <tbody>
-        {el.rows.map((row, r) => (
-          <tr key={r}>
-            {row.cells.map((cell, c) => {
-              const header = el.headerRow && r === 0
-              const bg = resolveColor(cell.fill, theme) ?? (header ? theme.colors.accent1 : undefined)
-              return (
-                <td key={c} style={{ background: bg, textAlign: cell.align, color: header ? '#fff' : undefined, fontWeight: header ? 700 : undefined }}>
-                  <div className="slide-text" dangerouslySetInnerHTML={{ __html: richTextHtml(cell.content) }} />
-                </td>
-              )
-            })}
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="el el-table" data-id={el.id} style={{ ...box(el), ...tableStyle(theme) }}>
+      <div className="slide-text" dangerouslySetInnerHTML={{ __html: tableHtml(el) }} />
+    </div>
   )
 }
