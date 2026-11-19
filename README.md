@@ -1,6 +1,6 @@
 # MyDocs
 
-A free, open source word processor for high school and college students. It runs entirely on your device: no account, no sign-in, no tracking, and your files never leave your computer. It covers everything a school paper needs, MLA and APA included, and nothing else.
+A free, source-available word processor for high school and college students. It runs entirely on your device: no account, no sign-in, no tracking, and your files never leave your computer. It covers everything a school paper needs, MLA and APA included, and nothing else.
 
 ![MyDocs with a new MLA paper open](docs/screenshot.png)
 
@@ -24,6 +24,49 @@ MyDocs is a web app: **[open MyDocs](https://mswayney-software.github.io/MyDocs/
 - **Files.** Documents are saved as `.owdoc` files, a single file with everything in it, images included. Use File > Save as Word file for a `.docx`.
 - **Printing headers and page numbers.** Chrome and Edge (version 131 or newer) print headers, footers and page numbers. Firefox and Safari print the right paper size and margins but can't print headers or page numbers yet; the app warns before printing. For MLA and APA papers, print from Chrome or Edge, or save as a Word file.
 
+## MySlides: help test it
+
+MySlides is the second app on this foundation: a presentation app for school, offline like MyDocs. It is on the `myslides-phase0` branch ([draft PR #1](https://github.com/mswayney-software/MyDocs/pull/1)), not on `main` yet. All eight phases of the plan are built. The automated tests (about 140 unit and 125 browser tests in Chrome and Firefox) pass. What's below is what they can't cover: real devices, real print windows, real projectors, and how it feels.
+
+**Try it:** [open the MySlides preview](https://raw.githack.com/mswayney-software/MyDocs/fbcbda37ccb0d37ac6740b4aedac61ed1feabfcf/index.html) (tap through the "Open the page" screen; the preview needs the internet). For the big tests, download the [stress deck](https://github.com/mswayney-software/MyDocs/raw/fbcbda37ccb0d37ac6740b4aedac61ed1feabfcf/stress-deck.myslides) (60 slides, 30 pictures, 10 tables, 10 charts, 5.4 MB) and open it with File > Open.
+
+**Report what you find** as a [GitHub issue](https://github.com/mswayney-software/MyDocs/issues): the browser and its version, the computer or phone, the steps, what you expected and what happened, and a screenshot or the PDF if there is one. One issue per problem.
+
+### Needs a person (highest value first)
+
+1. **Save as PDF in Firefox.** Open the stress deck, File > Save as PDF…, follow the note (Save as PDF, Landscape, headers and footers off). Check: 60 pages, one slide per page, no slide cut off at any edge, text can be selected in the PDF. Note the page size from the PDF's document properties.
+2. **Save as PDF in Safari, on a Mac and on an iPhone or iPad.** Same steps. Phase 0 found Safari prints on Letter portrait and cut the slide off; the app now scales each slide to the page, so check nothing is cut off and nothing is blank.
+3. **Save as PDF in Chrome and Edge, through the real print window.** Should be 60 pages exactly 13.333 × 7.5 inches, edge to edge, no blank pages. Zoom the PDF to 400% on a chart and a table: lines should stay sharp.
+4. **Presenter view with a real second screen or projector** (Chrome, Edge and Firefox). Present menu (the arrow beside Present) > Presenter view. Drag the audience window to the projector, press F there. Check: arrow keys and clicks in either window move both; B blanks the screen; the timer, clock, next slide and notes on your screen; closing either window ends the presentation and the editor comes back with nothing changed.
+5. **Present with the network off.** Open the app once online (so it caches itself), then turn Wi-Fi off and present the stress deck start to finish: nothing should change, every picture should show.
+6. **A low-end laptop (4 GB of memory, built-in graphics)**, the computer the speed targets are set for. With the stress deck:
+   - it opens in under 3 seconds;
+   - typing in a text box has no visible lag;
+   - dragging a shape or picture stays smooth;
+   - clicking between slides in the strip feels instant;
+   - the Slide sorter (status bar) scrolls smoothly top to bottom;
+   - while presenting, the next slide appears without a pause;
+   - the browser's task manager (Shift+Esc in Chrome) shows the tab under 500 MB.
+
+   Also insert a phone photo (Picture button): it should be on the slide in under 2 seconds.
+7. **Screen readers** (NVDA or Narrator on Windows, VoiceOver on Mac or iPhone). Move around with the keyboard only: the slide strip (arrow keys, Ctrl+arrows to reorder), the canvas (Tab between items, arrows move them, Ctrl+Shift+arrows resize them, Enter edits text), F10 for the menus, the chart data window, a table, and Present. Is everything announced, and can everything be reached?
+8. **Install as an app** (Chrome or Edge: the Install button in the top bar). Then double-click a `.myslides` file in your file manager: it should open in the installed app.
+9. **Tablets and narrow windows.** The app should be usable down to 768 pixels wide (an iPad in portrait).
+10. **The Phase 0 print test page** in Firefox and Mac Safari: `print-test.html` in the [preview](https://raw.githack.com/mswayney-software/MyDocs/fbcbda37ccb0d37ac6740b4aedac61ed1feabfcf/print-test.html), Save as PDF with default settings, and note the page count and page size.
+
+### General use
+
+Build a real deck for a class: a title slide, some text slides, a photo, a table, a bar, line and pie chart, speaker notes, a theme, transitions. Save it, close the tab, reopen it. Present it. Save it as a PDF. Anything confusing, slow, ugly or broken is worth an issue, including the wording.
+
+### Known gaps (no need to report)
+
+- Table column widths can only be changed with the mouse (elements resize with Ctrl+Shift+arrows, or Arrange > Size and position).
+- A table's thumbnail updates when you leave the table, not while you type.
+- The name "MySlides" and the `.myslides` extension are placeholders.
+- The preview link above shows the build as of Phase 8; a new link comes with each update.
+
+To run MySlides locally instead: `npm install`, then `npm run dev -w myslides`. `npm run stress-deck -w myslides` writes the stress deck to `apps/slides/stress-deck.myslides`. What's been checked so far, phase by phase, is in [docs/REUSE_AUDIT.md](docs/REUSE_AUDIT.md).
+
 ## Privacy
 
 MyDocs has no server. It makes no network requests after it loads: no analytics, no fonts or images from the web, no accounts. The app's content security policy blocks any request to another site, so this is enforced by the browser, not just promised. Your documents and their backups stay on your device. Details in [SECURITY.md](SECURITY.md).
@@ -35,19 +78,21 @@ Requires Node.js 24.
 ```sh
 npm install
 npx playwright install chromium firefox
-npm run dev        # local dev server
-npm run build      # production build in dist/
-npm run preview    # serve the production build (with offline support)
-BASE_PATH=/MyDocs/ npm run build  # build for a subfolder, as GitHub Pages serves it
-npm test           # unit tests (Vitest)
+npm run dev -w mydocs        # local dev server
+npm run build -w mydocs      # production build in apps/docs/dist/
+npm run preview -w mydocs    # serve the production build (with offline support)
+BASE_PATH=/MyDocs/ npm run build -w mydocs  # build for a subfolder, as GitHub Pages serves it
+npm test           # unit tests (Vitest), every app
 npm run test:e2e   # browser tests (Playwright, Chromium and Firefox), accessibility scan, typing speed
 npm run lint       # oxlint
 npm run typecheck  # tsc
 npm run licenses   # check dependency licenses, regenerate THIRD_PARTY_LICENSES.md
-node scripts/fetch-sample-papers.mjs  # real school papers for the Word import tests (optional)
+cd apps/docs && node scripts/fetch-sample-papers.mjs  # real school papers for the Word import tests (optional)
 ```
 
-The Word import tests also run against ten real sample papers from university writing centers, listed with their sources in `e2e/fixtures/sample-papers.json`. They belong to their schools, so they are not in this repository; the fetch script downloads them, and the tests skip any that are missing. Set `EXPORT_OUT=<folder>` when running `e2e/docx.spec.ts` to keep every exported .docx for a look in Word, Google Docs or LibreOffice.
+The repository holds MyDocs in `apps/docs`, code shared between apps in `packages/core`, and a second app in progress in `apps/slides`.
+
+The Word import tests also run against ten real sample papers from university writing centers, listed with their sources in `apps/docs/e2e/fixtures/sample-papers.json`. They belong to their schools, so they are not in this repository; the fetch script downloads them, and the tests skip any that are missing. Set `EXPORT_OUT=<folder>` when running `apps/docs/e2e/docx.spec.ts` to keep every exported .docx for a look in Word, Google Docs or LibreOffice.
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code fits together, [docs/FILE_FORMAT.md](docs/FILE_FORMAT.md) for the `.owdoc` format, [docs/ROADMAP.md](docs/ROADMAP.md) for what's next, and [CONTRIBUTING.md](CONTRIBUTING.md) to help.
 
@@ -57,4 +102,6 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for how the code fits together,
 
 ## License
 
-MIT. Third-party licenses are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Allowed dependency licenses: MIT, BSD, Apache-2.0, ISC, SIL OFL, and Zlib (for pako, used by JSZip). One test-only exception: axe-core (MPL-2.0), the accessibility scanner, which never ships in the app.
+[PolyForm Noncommercial 1.0.0](LICENSE): free to use, study, change and share for noncommercial purposes, including personal study and use by schools, charities and government bodies. Commercial use needs separate permission. Versions up to and including 1.1.0 were released under the MIT License, and copies of those keep it.
+
+Third-party licenses are listed in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md). Allowed dependency licenses: MIT, BSD, Apache-2.0, ISC, SIL OFL, and Zlib (for pako, used by JSZip). One test-only exception: axe-core (MPL-2.0), the accessibility scanner, which never ships in the app.

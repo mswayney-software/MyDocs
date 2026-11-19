@@ -2,7 +2,7 @@
 // spec's allowlist, then regenerates THIRD_PARTY_LICENSES.md.
 // Usage: node scripts/check-licenses.mjs        -> write file, fail on disallowed
 //        node scripts/check-licenses.mjs --check -> also fail if the file is stale
-import { readFileSync, writeFileSync, existsSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 
 const ALLOWED = [
   /^MIT$/, /^MIT-0$/, /^ISC$/, /^0BSD$/, /^BSD-[23]-Clause$/, /^Apache-2\.0$/,
@@ -26,13 +26,15 @@ function allowed(expr) {
   return isAllowedId(e)
 }
 
-const pkg = JSON.parse(readFileSync('package.json', 'utf8'))
 const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'))
-const directDev = new Set(Object.keys(pkg.devDependencies ?? {}))
+// The root and each workspace (apps/*, packages/*) list their own dev tools.
+const manifests = Object.entries(lock.packages).filter(([path, info]) => !path.includes('node_modules/') && !info.link)
+const directDev = new Set(manifests.flatMap(([, info]) => Object.keys(info.devDependencies ?? {})))
 
 const rows = []
 for (const [path, info] of Object.entries(lock.packages)) {
-  if (!path) continue
+  // Skip the root, the workspaces themselves (our own code), and the links to them.
+  if (!path.includes('node_modules/') || info.link) continue
   const name = path.slice(path.lastIndexOf('node_modules/') + 13)
   const shipped = !info.dev
   if (!shipped && !(directDev.has(name) && path === `node_modules/${name}`)) continue
@@ -71,15 +73,114 @@ ${table(unique.filter((r) => r.shipped))}
 ${table(unique.filter((r) => !r.shipped))}
 `
 
+// ---- One app's own file: exactly what that app ships, with each license's text --------
+// (MIT, BSD, ISC and the like ask for their copyright notice and text to travel with the code.)
+
+/** Where Node would find `name` when required from the package at `from` (a lockfile path). */
+function resolve(from, name) {
+  let dir = from
+  for (;;) {
+    const candidate = `${dir ? dir + '/' : ''}node_modules/${name}`
+    const info = lock.packages[candidate]
+    if (info) return info.link ? info.resolved : candidate
+    if (!dir) return null
+    const cut = dir.lastIndexOf('/node_modules/')
+    dir = cut >= 0 ? dir.slice(0, cut) : dir.includes('/') && !dir.startsWith('node_modules') ? '' : ''
+  }
+}
+
+/** Every package an app's code pulls in: its dependencies, the shared workspace's, and theirs. */
+function shippedBy(appPath, extras) {
+  const found = new Map()
+  // Build extras count on their own, not with their dependencies: only a few lines of each ship.
+  for (const name of extras) {
+    const path = resolve('', name)
+    const info = path && lock.packages[path]
+    if (info) found.set(`${name}@${info.version}`, { name, version: info.version, path, license: info.license })
+  }
+  const queue = [[appPath, lock.packages[appPath]]]
+  const seenPaths = new Set()
+  while (queue.length) {
+    const [path, info] = queue.shift()
+    if (!path || !info || seenPaths.has(path)) continue
+    seenPaths.add(path)
+    if (path.includes('node_modules/')) {
+      const name = path.slice(path.lastIndexOf('node_modules/') + 13)
+      found.set(`${name}@${info.version}`, { name, version: info.version, path, license: info.license })
+    }
+    for (const dep of Object.keys({ ...(info.dependencies ?? {}), ...(info.optionalDependencies ?? {}) })) {
+      const at = resolve(path.startsWith('node_modules') ? path : path, dep)
+      if (at) queue.push([at, lock.packages[at]])
+    }
+  }
+  return [...found.values()].sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function licenseText(path) {
+  if (!existsSync(path)) return null
+  const files = readdirSync(path).filter((f) => /^(licen[cs]e|copying|ofl)([-.].*)?$/i.test(f)).sort()
+  if (!files.length) {
+    // Some packages carry their notice only in the README's License section.
+    const readme = readdirSync(path).find((f) => /^readme(\.md)?$/i.test(f))
+    if (!readme) return null
+    const lines = readFileSync(`${path}/${readme}`, 'utf8').replace(/\r\n/g, '\n').split('\n')
+    const start = lines.findIndex((l) => /^#+\s*licen[cs]e\s*$/i.test(l))
+    if (start < 0) return null
+    const end = lines.findIndex((l, i) => i > start && /^#+\s/.test(l))
+    const section = lines.slice(start + 1, end < 0 ? undefined : end).join('\n')
+    return /copyright/i.test(section) ? section.replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim() : null
+  }
+  return files.map((f) => readFileSync(`${path}/${f}`, 'utf8').replace(/\r\n/g, '\n').trim()).join('\n\n')
+}
+
+/**
+ * The code that lands in an app's build besides its own dependencies: the offline worker's
+ * Workbox parts (bundled by vite-plugin-pwa), its registration helper, and Vite's preload helper.
+ */
+const BUILD_EXTRAS = ['workbox-core', 'workbox-precaching', 'workbox-routing', 'workbox-strategies', 'workbox-window', 'vite-plugin-pwa', 'vite']
+
+function appFile(appPath, appName) {
+  const list = shippedBy(appPath, BUILD_EXTRAS).filter((p) => !p.path.startsWith('packages/'))
+  const missing = []
+  const sections = list.map((p) => {
+    const text = licenseText(p.path)
+    if (!text) missing.push(`${p.name}@${p.version}`)
+    return `### ${p.name} ${p.version} (${p.license})\n\n\`\`\`text\n${text ?? `License: ${p.license}. No license file is included in the package.`}\n\`\`\``
+  })
+  const body = `# Third-party licenses: ${appName}
+
+Generated by \`npm run licenses\`. Do not edit by hand.
+
+${appName} is © Bright Logic LLC, under the PolyForm Noncommercial License 1.0.0. It includes the open-source software below, each under its own license, reproduced in full. The fonts are under the SIL Open Font License 1.1.
+
+| Package | Version | License |
+| --- | --- | --- |
+${list.map((p) => `| ${p.name} | ${p.version} | ${p.license} |`).join('\n')}
+
+## License texts
+
+${sections.join('\n\n')}
+`
+  return { body, missing, count: list.length }
+}
+
+const outputs = [['THIRD_PARTY_LICENSES.md', md]]
+const slides = appFile('apps/slides', 'MySlides')
+outputs.push(['apps/slides/THIRD_PARTY_LICENSES.md', slides.body])
+if (slides.missing.length) console.warn(`MySlides: no license file in ${slides.missing.join(', ')} (license named in the table)`)
+
 if (process.argv.includes('--check')) {
-  const current = existsSync('THIRD_PARTY_LICENSES.md') ? readFileSync('THIRD_PARTY_LICENSES.md', 'utf8') : ''
-  if (current.replace(/\r\n/g, '\n') !== md) {
-    console.error('THIRD_PARTY_LICENSES.md is out of date. Run `npm run licenses` and commit it.')
-    process.exitCode = 1
+  for (const [file, text] of outputs) {
+    const current = existsSync(file) ? readFileSync(file, 'utf8') : ''
+    if (current.replace(/\r\n/g, '\n') !== text) {
+      console.error(`${file} is out of date. Run \`npm run licenses\` and commit it.`)
+      process.exitCode = 1
+    }
   }
 } else {
-  writeFileSync('THIRD_PARTY_LICENSES.md', md)
+  for (const [file, text] of outputs) writeFileSync(file, text)
 }
+console.log(`MySlides ships ${slides.count} third-party packages.`)
 
 if (bad.length) {
   console.error('Disallowed or unknown licenses (flag before install):')

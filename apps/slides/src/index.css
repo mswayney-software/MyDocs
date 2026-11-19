@@ -1,0 +1,372 @@
+/* MySlides layout. Shared tokens, dialogs, menus and toolbar buttons come from @mysuite/core/styles.css. */
+
+.app { display: flex; flex-direction: column; height: 100%; }
+.chrome, .statusbar { user-select: none; -webkit-user-select: none; }
+
+.topbar {
+  display: flex; align-items: center; gap: 16px; min-height: 40px;
+  background: var(--chrome); border-bottom: 1px solid var(--line);
+  padding: 4px 12px; font-size: 14px;
+}
+.file-status { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.file-state { color: var(--ink-soft); font-size: 13px; }
+.file-name { margin: 0; font-size: inherit; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40ch; }
+.tb-group { display: inline-flex; align-items: center; gap: 2px; flex-wrap: nowrap; }
+.tb-font { width: 170px; }
+.tb-size { width: 64px; }
+.tb-spacing { width: 64px; }
+
+.slides-body { flex: 1; display: flex; min-height: 0; }
+.editor-area { flex: 1; display: flex; min-width: 0; min-height: 0; }
+
+/* ---- slide strip ---------------------------------------------------------------- */
+
+/* Collapses below 1024 px (spec UI: Width). */
+.slide-strip { width: 184px; flex: none; display: flex; background: var(--chrome); border-right: 1px solid var(--line); }
+@media (max-width: 1023px) { .slide-strip { display: none; } }
+
+/* The strip and the sorter: a scroll area holding only the thumbnails on screen, each placed
+   by its index (every thumbnail is the same size). */
+.grid-scroll { flex: 1; position: relative; overflow-y: auto; overflow-x: hidden; min-height: 0; user-select: none; -webkit-user-select: none; }
+.grid-list { position: relative; outline: none; }
+.grid-cell { position: absolute; left: 0; top: 0; display: flex; gap: 6px; align-items: flex-start; contain: layout style; }
+.grid-cell.is-dragged { opacity: 0.4; }
+.strip-num { width: 18px; flex: none; font-size: 12px; color: var(--ink-soft); text-align: right; padding-top: 2px; }
+.grid-sorter .grid-cell { flex-direction: column; align-items: center; gap: 4px; }
+.sorter-num { font-size: 13px; color: var(--ink-soft); }
+.strip-thumb[aria-selected='true'] { border-color: var(--focus); box-shadow: 0 0 0 2px color-mix(in srgb, var(--focus) 35%, transparent); }
+.drop-marker { position: absolute; left: 0; top: 0; height: 4px; border-radius: 2px; background: var(--focus); pointer-events: none; z-index: 2; }
+.drop-marker.is-vertical { width: 4px; }
+
+.sorter-body { flex-direction: column; background: var(--bg); }
+.sorter { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.sorter-bar { border-bottom: 1px solid var(--line); }
+.sorter-count { margin-left: auto; margin-right: 12px; font-size: 13px; color: var(--ink-soft); }
+.tb-text { width: auto; gap: 6px; padding: 0 10px; }
+
+.status-right { display: inline-flex; align-items: center; gap: 12px; }
+.status-btn {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border: 1px solid transparent; border-radius: 4px;
+  background: none; color: inherit; font: inherit; cursor: pointer;
+}
+.status-btn:hover { background: var(--hover); }
+.status-btn[aria-pressed='true'] { border-color: var(--line); background: var(--pressed); color: var(--pressed-ink); }
+
+/* ---- speaker notes -------------------------------------------------------------- */
+
+.editor-area { flex-direction: column; }
+.notes-pane { flex: none; display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--chrome); }
+.notes-toggle {
+  align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; margin: 2px 6px; padding: 2px 8px;
+  border: 0; border-radius: 4px; background: none; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
+}
+.notes-toggle:hover { background: var(--hover); }
+.notes-text {
+  height: 96px; margin: 0 12px 10px; padding: 8px 10px; resize: vertical; min-height: 48px; max-height: 40vh;
+  border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); color: var(--ink);
+  font: 15px/1.45 'Atkinson Hyperlegible', sans-serif;
+}
+.strip-thumb {
+  /* Content-box: the slide inside is scaled to exactly the width set, whatever the border. */
+  box-sizing: content-box; position: relative; flex: none; padding: 0; overflow: hidden; cursor: pointer;
+  background: #fff; border: 1px solid var(--line); border-radius: 3px; outline-offset: 2px;
+}
+.strip-thumb[aria-current='true'] { border: 2px solid var(--focus); }
+.thumb-scale { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+.strip-menu { min-width: 180px; }
+
+/* ---- canvas --------------------------------------------------------------------- */
+
+.stage { flex: 1; display: grid; place-items: center; overflow: hidden; outline: none; min-width: 0; }
+.stage:focus-visible { box-shadow: inset 0 0 0 2px var(--focus); }
+.slide-frame { position: relative; box-shadow: 0 1px 3px rgb(0 0 0 / 0.15), 0 0 0 1px rgb(0 0 0 / 0.04); }
+.slide-layer { position: absolute; left: 0; top: 0; transform-origin: 0 0; touch-action: none; user-select: none; -webkit-user-select: none; }
+
+/* The slide itself: always its own colors, in dark mode too (they belong to the deck). */
+.slide-surface {
+  position: absolute; inset: 0; overflow: hidden; color-scheme: light;
+  /* A slide looks the same wherever it is placed (the strip puts it inside a button, which
+     brings its own centering and font settings): nothing inherited may reach its text. */
+  text-align: left; text-indent: 0; text-transform: none; text-shadow: none;
+  letter-spacing: normal; word-spacing: normal; line-height: normal; white-space: normal;
+  font: 16px sans-serif; font-kerning: auto; font-synthesis: weight style;
+  font-variant: normal; font-stretch: normal; text-rendering: auto; color: #000;
+}
+.el { position: absolute; box-sizing: border-box; margin: 0; }
+
+.el-text { display: flex; flex-direction: column; padding: 8px 12px; overflow: visible; cursor: default; }
+.el-text > * { width: 100%; }
+.el-live { z-index: 2; cursor: text; user-select: text; -webkit-user-select: text; }
+
+/* Text in a box, while typing and everywhere else alike. The editor's own rules
+   (Tiptap injects them on .ProseMirror) are repeated so static text wraps identically. */
+.slide-text {
+  outline: none;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  white-space: break-spaces;
+  -webkit-font-variant-ligatures: none;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0;
+}
+.slide-text p { margin: 0; min-height: 1lh; }
+.slide-text ul, .slide-text ol { margin: 0; padding-left: 1.3em; }
+.slide-text li > p { margin: 0; }
+.slide-text mark { color: inherit; }
+.slide-text a { color: inherit; text-decoration: underline; }
+.el:not(.el-live) .slide-text a { pointer-events: none; }
+.text-hint { color: #8a8a85; font-style: normal; }
+
+.el-image { object-fit: fill; display: block; }
+.el-shape { overflow: visible; }
+/* A shape is clicked on the shape itself, not anywhere in its box: shapes stacked in a corner
+   stay pickable. Unfilled shapes still count their inside; lines use a wide invisible stroke. */
+.slide-layer .el-shape { pointer-events: none; }
+.slide-layer .el-shape g > * { pointer-events: visible; }
+.el-table { overflow: visible; }
+.el-table > .slide-text, .el-table .ProseMirror, .el-table .tableWrapper { height: 100%; }
+/* The same rules for the static table and the one being edited (their markup is the same). */
+.slide-table { border-collapse: collapse; table-layout: fixed; height: 100%; }
+.slide-table td, .slide-table th {
+  border: 1px solid var(--table-line); padding: 0.25em 0.45em; vertical-align: top;
+  text-align: left; font-weight: inherit; overflow-wrap: anywhere;
+}
+.slide-table th { background: var(--table-head-bg); color: var(--table-head-fg); font-weight: 700; }
+.slide-table .selectedCell { box-shadow: inset 0 0 0 9999px rgb(31 95 209 / 0.18); }
+.el-pending, .el-broken {
+  display: grid; place-items: center; text-align: center; padding: 12px;
+  font: 16px system-ui, sans-serif; color: #4a4a46;
+}
+.el-pending { background: #f1f1ee; border: 1px dashed #9a9a95; }
+.el-broken { background: #e4e4e0; border: 2px dashed #6b6b66; }
+
+/* Selection, handles and guides keep a constant screen size: --inv is 1 / scale. */
+.sel-box {
+  position: absolute; pointer-events: none;
+  outline: calc(2px * var(--inv)) solid var(--focus); outline-offset: calc(1px * var(--inv));
+}
+.sel-editing { outline-style: dashed; }
+.handle {
+  position: absolute; pointer-events: auto;
+  width: calc(10px * var(--inv)); height: calc(10px * var(--inv));
+  margin: calc(-5px * var(--inv)) 0 0 calc(-5px * var(--inv));
+  background: #fff; border: calc(1.5px * var(--inv)) solid var(--focus); border-radius: calc(2px * var(--inv));
+}
+.handle-nw { left: 0; top: 0; cursor: nwse-resize; }
+.handle-n { left: 50%; top: 0; cursor: ns-resize; }
+.handle-ne { left: 100%; top: 0; cursor: nesw-resize; }
+.handle-e { left: 100%; top: 50%; cursor: ew-resize; }
+.handle-se { left: 100%; top: 100%; cursor: nwse-resize; }
+.handle-s { left: 50%; top: 100%; cursor: ns-resize; }
+.handle-sw { left: 0; top: 100%; cursor: nesw-resize; }
+.handle-w { left: 0; top: 50%; cursor: ew-resize; }
+.handle-end { cursor: crosshair; border-radius: 50%; }
+.marquee {
+  position: absolute; pointer-events: none; z-index: 3;
+  border: calc(1px * var(--inv)) solid var(--focus); background: rgb(31 95 209 / 0.08);
+}
+.guide { position: absolute; pointer-events: none; background: #e0457b; z-index: 3; }
+.guide-v { top: 0; bottom: 0; width: calc(1px * var(--inv)); }
+.guide-h { left: 0; right: 0; height: calc(1px * var(--inv)); }
+
+.statusbar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--chrome); border-top: 1px solid var(--line);
+  padding: 4px 12px; font-size: 12px; color: var(--ink-soft);
+}
+
+/* Read by screen readers, not shown. */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* ---- design pickers (layout, theme) and color picker ---------------------------- */
+
+.design-grid { display: grid; grid-template-columns: repeat(3, auto); gap: 10px; padding: 4px; }
+.design-choice {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px;
+  border: 2px solid transparent; border-radius: 6px; background: none; color: inherit; font: inherit; cursor: pointer;
+}
+.design-choice:hover { background: var(--hover); }
+/* The current choice is filled in; keyboard focus is only a ring, so the two never look alike. */
+.design-choice[aria-checked="true"] { background: var(--pressed); color: var(--pressed-ink); font-weight: 600; }
+.design-choice[aria-checked="true"] .design-preview { box-shadow: 0 0 0 2px var(--pressed-ink); }
+.design-choice:focus-visible { outline: 2px dashed var(--focus); outline-offset: 1px; }
+.design-preview {
+  position: relative; display: block; overflow: hidden; border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.15);
+}
+.design-name { font-size: 12px; }
+.swatches .swatch-heading { font-size: 12px; color: var(--ink-soft); margin-top: 2px; }
+.menu-heading { padding: 6px 8px 2px; font-size: 12px; color: var(--ink-soft); }
+.menu-icon { width: 18px; display: inline-flex; color: var(--ink-soft); }
+
+/* ---- presenting ------------------------------------------------------------------ */
+
+.present-split { display: inline-flex; margin-left: auto; }
+.present-btn, .present-more > button {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px;
+  border: 1px solid var(--focus); background: var(--focus); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+}
+.present-btn { border-radius: 6px 0 0 6px; }
+.present-more > button { border-radius: 0 6px 6px 0; padding: 0 6px; border-left-color: rgb(255 255 255 / 0.45); }
+.present-btn:hover, .present-more > button:hover { filter: brightness(1.1); }
+.present-btn:focus-visible, .present-more > button:focus-visible { outline-offset: 2px; }
+
+/* The slide and nothing else: black around it, whatever the app's own colors. */
+.present {
+  position: fixed; inset: 0; z-index: 50; background: #000; color: #f2f2f2; outline: none;
+  user-select: none; -webkit-user-select: none; overflow: hidden;
+}
+.present.is-idle { cursor: none; }
+.present-stage { position: absolute; inset: 0; overflow: hidden; }
+.present-frame { position: absolute; overflow: hidden; background: #000; }
+.present-layer { position: absolute; inset: 0; will-change: transform, opacity; }
+.present-scale { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.present-cover { position: absolute; inset: 0; z-index: 5; background: #000; display: grid; place-items: center; }
+.present-end p { margin: 0; font-size: 18px; color: #b8b8b8; }
+.present-message { display: grid; place-items: center; font-size: 18px; }
+.present-message p { max-width: 36em; text-align: center; padding: 16px; }
+
+.present-bar {
+  position: absolute; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 10;
+  display: flex; align-items: center; gap: 4px; padding: 4px;
+  background: rgb(24 24 24 / 0.92); border: 1px solid #444; border-radius: 8px;
+  opacity: 0; pointer-events: none; transition: opacity 150ms;
+}
+.present-bar.is-shown, .present-bar:focus-within { opacity: 1; pointer-events: auto; }
+.present-bar button {
+  display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 6px;
+  background: transparent; color: #f2f2f2; cursor: pointer;
+}
+.present-bar button:hover { background: #3a3a3a; }
+.present-bar button:focus-visible { outline: 2px solid #8fb4ff; outline-offset: 0; }
+.present-count { min-width: 64px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; }
+
+.present-hint {
+  position: absolute; left: 50%; top: 24px; transform: translateX(-50%); z-index: 12;
+  max-width: min(560px, calc(100% - 32px)); padding: 16px 20px; border-radius: 10px;
+  background: #1f1f1f; border: 1px solid #555; color: #f2f2f2; font-size: 15px; line-height: 1.45;
+}
+.present-hint p { margin: 0 0 12px; }
+.present-hint-actions { display: flex; gap: 8px; }
+.present-hint .dlg-btn:not(.dlg-primary) { background: #2c2c2c; color: #f2f2f2; border-color: #666; }
+kbd { font: 600 0.9em system-ui, sans-serif; padding: 1px 5px; border: 1px solid currentColor; border-radius: 4px; }
+
+/* Presenter view: dark, for a dim room. */
+.presenter {
+  position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; gap: 8px; padding: 12px 16px;
+  background: #151515; color: #ececec; outline: none; font-size: 15px;
+}
+.presenter-top { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.presenter-count { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.presenter-timer { display: inline-flex; align-items: center; gap: 4px; }
+.presenter-elapsed { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 4.2em; }
+.presenter-clock { font-size: 18px; color: #c8c8c8; font-variant-numeric: tabular-nums; }
+.presenter-end { margin-left: auto; }
+.presenter-note { margin: 0; color: #c8c8c8; font-size: 14px; }
+.presenter-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px;
+  border: 1px solid #555; border-radius: 6px; background: #262626; color: #ececec; font: inherit; cursor: pointer;
+}
+.presenter-btn:hover:not(:disabled) { background: #333; }
+.presenter-btn:disabled { opacity: 0.45; cursor: default; }
+.presenter-btn[aria-pressed='true'] { background: #ececec; color: #151515; }
+.presenter-btn:focus-visible { outline: 2px solid #8fb4ff; outline-offset: 1px; }
+.presenter-primary { background: #2f62c8; border-color: #2f62c8; color: #fff; }
+.presenter-primary:hover:not(:disabled) { background: #3a6fd8; }
+.presenter-main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(260px, 1fr); gap: 16px; }
+.presenter-current { position: relative; min-height: 0; background: #000; border-radius: 6px; overflow: hidden; }
+.presenter-side { display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+.presenter-label { margin: 0 0 4px; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: #c8c8c8; }
+.presenter-next-slide { position: relative; aspect-ratio: 16 / 9; background: #000; border-radius: 6px; overflow: hidden; }
+.presenter-none { position: absolute; inset: 0; display: grid; place-items: center; color: #b8b8b8; }
+.presenter-notes { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.presenter-notes-head { display: flex; align-items: center; gap: 6px; }
+.presenter-notes-head .presenter-label { margin-right: auto; }
+.presenter-notes-text {
+  flex: 1; min-height: 0; overflow: auto; white-space: pre-wrap; line-height: 1.45; padding: 10px 12px;
+  background: #1f1f1f; border: 1px solid #3a3a3a; border-radius: 6px; user-select: text;
+}
+.presenter-none-inline { color: #a8a8a8; }
+.presenter-controls { display: flex; gap: 8px; justify-content: center; }
+.presenter-controls .presenter-btn { min-height: 40px; padding: 0 16px; }
+@media (max-width: 900px) {
+  .presenter-main { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
+}
+.topbar-action ~ .present-split { margin-left: 8px; }
+.present-more .popover-panel { left: auto; right: 0; white-space: nowrap; }
+
+/* ---- charts ---------------------------------------------------------------------- */
+
+.el-chart svg { display: block; }
+.chart-dlg { width: min(1040px, calc(100vw - 32px)); max-width: none; }
+.chart-dlg-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.chart-dlg-head .dlg-title { margin: 0; }
+.chart-types { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.chart-type { border: 0; background: var(--sheet); color: var(--ink); padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+.chart-type + .chart-type { border-left: 1px solid var(--line); }
+.chart-type[aria-checked='true'] { background: var(--pressed); color: var(--pressed-ink); font-weight: 600; }
+.chart-dlg-main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 400px); gap: 16px; }
+@media (max-width: 860px) { .chart-dlg-main { grid-template-columns: 1fr; } }
+.chart-grid-scroll { overflow: auto; max-height: 52vh; border: 1px solid var(--line); border-radius: 4px; }
+.chart-grid { border-collapse: collapse; font-size: 13px; }
+.chart-grid th, .chart-grid td { padding: 2px; border: 1px solid var(--line); vertical-align: top; text-align: left; font-weight: normal; }
+.chart-grid thead th { background: var(--chrome); }
+.chart-grid tbody th { background: var(--chrome); }
+.chart-grid input { width: 96px; height: 28px; padding: 0 6px; border: 1px solid transparent; border-radius: 3px; background: transparent; color: var(--ink); font: inherit; }
+.chart-grid input:focus { border-color: var(--focus); outline: none; background: var(--sheet); }
+.chart-grid .chart-num { text-align: right; font-variant-numeric: tabular-nums; }
+.chart-grid input[aria-invalid='true'] { border-color: #b3261e; background: #fdecea; color: #1d1d1b; }
+.chart-head { display: flex; align-items: center; }
+.chart-x { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 3px; background: transparent; color: var(--ink-soft); cursor: pointer; flex: none; }
+.chart-x:hover { background: var(--hover); color: var(--ink); }
+.chart-bad { display: block; padding: 0 6px 2px; font-size: 11px; color: #b3261e; }
+:root[data-theme='dark'] .chart-bad { color: #ff9b91; }
+.is-unused input { opacity: 0.55; }
+.chart-add { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; height: 28px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.chart-grid .chart-add { margin: 0; }
+.chart-add:disabled { opacity: 0.5; cursor: default; }
+.chart-note, .chart-hint { margin: 0 0 6px; font-size: 12px; color: var(--ink-soft); }
+.chart-hint { margin-top: 6px; }
+.chart-preview { border: 1px solid var(--line); border-radius: 4px; overflow: hidden; color-scheme: light; }
+.chart-preview svg { display: block; width: 100%; height: auto; }
+.chart-options { margin-top: 12px; }
+.chart-options .dlg-field input { height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); color: var(--ink); font: inherit; font-size: 14px; }
+.chart-options .dlg-check { margin-bottom: 12px; }
+.chart-axes { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.chart-dlg-foot { margin-top: 12px; align-items: center; }
+.chart-bad-note { margin: 0 auto 0 0; font-size: 13px; color: #b3261e; }
+:root[data-theme='dark'] .chart-bad-note { color: #ff9b91; }
+
+/* ---- tables ---------------------------------------------------------------------- */
+
+/* A grip on each line between a selected table's columns (constant screen width, like handles). */
+.col-edge { position: absolute; width: calc(10px * var(--inv)); margin-left: calc(-5px * var(--inv)); cursor: col-resize; z-index: 3; }
+.col-edge::after { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; width: calc(2px * var(--inv)); margin-left: calc(-1px * var(--inv)); background: var(--focus); opacity: 0; }
+.col-edge:hover::after { opacity: 0.8; }
+.el-table.el-live { cursor: text; }
+.table-size { display: grid; grid-template-columns: auto 72px; gap: 8px 10px; align-items: center; padding: 8px; font-size: 13px; }
+.table-size input { height: 30px; padding: 0 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--sheet); color: var(--ink); font: inherit; }
+.table-size .dlg-btn { grid-column: 1 / -1; }
+
+/* ---- Save as PDF ----------------------------------------------------------------- */
+/* The page size and the slide's scale come from print/print.ts (one rule set per browser). */
+
+.print-deck { display: none; }
+@media print {
+  html, body { height: auto; margin: 0; background: #fff; }
+  #root, dialog { display: none !important; }
+  .print-deck { display: block; }
+  .print-page {
+    position: relative; overflow: hidden; break-after: page; break-inside: avoid;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .print-page:last-child { break-after: auto; }
+  .print-scale { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+}
+
+/* A backup problem: stays until it clears, in plain words, next to the file name. */
+.file-warning {
+  margin-left: 8px; padding: 2px 8px; border-radius: 4px; font-size: 12px; line-height: 1.35;
+  background: #fff4e5; color: #7a3d00; border: 1px solid #f0b46a; max-width: 46ch;
+}
+:root[data-theme='dark'] .file-warning { background: #3a2a14; color: #ffd8a8; border-color: #8a5a20; }

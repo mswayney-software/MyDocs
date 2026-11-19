@@ -1,0 +1,17 @@
+/* Theme fonts for MySlides only (SIL OFL 1.1, from Fontsource). Latin and Latin Extended, to keep the download small. */
+@import '@fontsource/atkinson-hyperlegible/latin-400.css';
+@import '@fontsource/atkinson-hyperlegible/latin-400-italic.css';
+@import '@fontsource/atkinson-hyperlegible/latin-700.css';
+@import '@fontsource/atkinson-hyperlegible/latin-700-italic.css';
+@import '@fontsource/atkinson-hyperlegible/latin-ext-400.css';
+@import '@fontsource/atkinson-hyperlegible/latin-ext-400-italic.css';
+@import '@fontsource/atkinson-hyperlegible/latin-ext-700.css';
+@import '@fontsource/atkinson-hyperlegible/latin-ext-700-italic.css';
+@import '@fontsource/lora/latin-400.css';
+@import '@fontsource/lora/latin-400-italic.css';
+@import '@fontsource/lora/latin-700.css';
+@import '@fontsource/lora/latin-700-italic.css';
+@import '@fontsource/lora/latin-ext-400.css';
+@import '@fontsource/lora/latin-ext-400-italic.css';
+@import '@fontsource/lora/latin-ext-700.css';
+@import '@fontsource/lora/latin-ext-700-italic.css';

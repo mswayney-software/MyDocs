@@ -7,21 +7,23 @@ MyDocs is static files that run in the browser. There is no backend to build, ho
 The editor (Tiptap on ProseMirror) holds the document as JSON. Next to it, a small page settings object holds paper size, margins, header, footer and page numbers. Everything else reads from or writes to these two:
 
 - **Native file** (`src/files/native.ts`): one JSON file with a format id and version, the page settings, and the document, images embedded as data URLs. See [FILE_FORMAT.md](FILE_FORMAT.md).
-- **Backups** (`src/storage/autosave.ts`): the same JSON in IndexedDB, written within a second of any change, plus the last 10 versions. A Web Lock marks which documents belong to an open tab, so crash recovery offers only work from tabs that are gone.
+- **Backups** (`packages/core/src/backups.ts`, named for MyDocs in `src/storage`): the same JSON in IndexedDB, written within a second of any change, plus the last 10 versions. A Web Lock marks which documents belong to an open tab, so crash recovery offers only work from tabs that are gone.
 - **Word export** (`src/files/docx-export.ts`): walks the document JSON and builds the .docx directly with the `docx` library, using the same sizes and spacing the editor shows. Headers carry a live PAGE field.
 - **Word import** (`src/files/docx-import.ts`, `docx-xml.ts`): mammoth turns the .docx into HTML, which the editor reads like a paste. What mammoth leaves out (alignment, indents, spacing, fonts, colors, page breaks, paper, margins, header, footer, page numbers) is read from the file's XML and matched to mammoth's paragraphs and runs by position, only when the counts line up exactly.
 - **Print and PDF** (`src/files/print.ts`): a generated `@page` rule sets the paper and margins, and its margin boxes print the header, footer and page numbers. The browser's print window does the rest.
-- **Offline** (`src/offline.ts`, `vite.config.ts`): a Workbox service worker caches the app, code and fonts on first load. A new version applies by itself while the page is blank; otherwise the top bar offers a restart.
+- **Offline** (`packages/core/src/offline.ts`, `packages/core/src/vite.ts`): a Workbox service worker caches the app, code and fonts on first load. A new version applies by itself while the page is blank; otherwise the top bar offers a restart.
 
 ## Folders
 
+The repository is an npm workspace. MyDocs is in `apps/docs` (paths below are relative to it unless they start with `packages/`). Code shared with the other apps is in `packages/core`: offline and updates, backups, file open and save, image shrinking, fonts, screen appearance, dialogs, menus, popovers, and the build's content security policy. `apps/slides` is MySlides, in progress.
+
 - `src/editor`: editor setup and custom extensions (title, paragraph formatting, page break, find and replace, image, table edges, word count)
 - `src/files`: native file, Word import and export, print, the document session (open, save, backup, recovery)
-- `src/storage`: IndexedDB backups and locks
+- `src/storage`: MyDocs' backup names (the backup code is in `packages/core`)
 - `src/templates`: Blank, MLA paper, APA student paper
-- `src/ui`: top bar, menus, toolbar, dialogs, find bar, status bar, zoom, dark mode and the typewriter light (`appearance.ts`, `TypewriterLight.tsx`)
+- `src/ui`: top bar, menus, toolbar, find bar, status bar, zoom, and the typewriter light (`appearance.ts`, `TypewriterLight.tsx`); dialogs, popovers and dark mode come from `packages/core`
 - `e2e`: browser tests (Playwright), including the accessibility scan and the 50-page typing test
-- `scripts`: license check, icon generation, sample paper download
+- `scripts`: icon generation, sample paper download (the license check is at the repository root)
 
 ## Principles in the code
 

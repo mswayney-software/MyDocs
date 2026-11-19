@@ -30,5 +30,8 @@ coverage
 dist-e2e
 
 # Real sample papers for the Word import test (copyrighted; fetch with scripts/fetch-sample-papers.mjs)
-e2e/fixtures/docx-online/
+**/e2e/fixtures/docx-online/
 dist-pages
+
+# Made by apps/slides/scripts/stress-deck.ts
+stress-deck.myslides

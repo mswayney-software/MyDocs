@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Strikethrough is now Ctrl+Shift+X (Cmd+Shift+X on a Mac), as in Google Docs. Ctrl+Shift+S is only Save as: before, one press struck the selected text through and opened Save as.
+- Ctrl+Home and Ctrl+End always reach the start and end of the document, also from inside a table (Chrome sometimes ignored them there). With Shift, they select to there.
+
 ## 1.1.0
 
 - Dark mode (View menu): Light, Dark, or Match my device. The page goes dark too, with text colors and highlights kept readable; printing and exports stay black on white.

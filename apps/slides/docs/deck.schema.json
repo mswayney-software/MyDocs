@@ -1,0 +1,830 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "myslides-deck-v1",
+  "title": "MySlides deck.json",
+  "type": "object",
+  "properties": {
+    "format": {
+      "type": "string",
+      "const": "myslides"
+    },
+    "formatVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "app": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "version"
+      ],
+      "additionalProperties": {}
+    },
+    "meta": {
+      "default": {
+        "title": ""
+      },
+      "type": "object",
+      "properties": {
+        "title": {
+          "default": "",
+          "type": "string"
+        },
+        "created": {
+          "type": "string"
+        },
+        "modified": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": {}
+    },
+    "size": {
+      "default": {
+        "width": 1280,
+        "height": 720
+      },
+      "type": "object",
+      "properties": {
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "width",
+        "height"
+      ],
+      "additionalProperties": {}
+    },
+    "theme": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "colors": {
+          "type": "object",
+          "properties": {
+            "background": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "text": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "heading": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "accent1": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "accent2": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "accent3": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "accent4": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "accent5": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            },
+            "accent6": {
+              "type": "string",
+              "pattern": "^#[0-9A-Fa-f]{6}$"
+            }
+          },
+          "required": [
+            "background",
+            "text",
+            "heading",
+            "accent1",
+            "accent2",
+            "accent3",
+            "accent4",
+            "accent5",
+            "accent6"
+          ],
+          "additionalProperties": {}
+        },
+        "fonts": {
+          "type": "object",
+          "properties": {
+            "heading": {
+              "type": "string",
+              "minLength": 1
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "heading",
+            "body"
+          ],
+          "additionalProperties": {}
+        }
+      },
+      "required": [
+        "id",
+        "colors",
+        "fonts"
+      ],
+      "additionalProperties": {}
+    },
+    "slides": {
+      "minItems": 1,
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "layout": {
+            "default": "blank",
+            "type": "string"
+          },
+          "background": {
+            "default": null,
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                  },
+                  {
+                    "type": "string",
+                    "enum": [
+                      "background",
+                      "text",
+                      "heading",
+                      "accent1",
+                      "accent2",
+                      "accent3",
+                      "accent4",
+                      "accent5",
+                      "accent6"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A hex color like \"#1F7A8C\", a theme slot like \"accent1\", or null for none"
+          },
+          "transition": {
+            "default": "none",
+            "type": "string",
+            "enum": [
+              "none",
+              "fade",
+              "slide"
+            ]
+          },
+          "notes": {
+            "default": "",
+            "type": "string"
+          },
+          "elements": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "text"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "x": {
+                      "type": "number",
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "y": {
+                      "type": "number",
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "w": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "h": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "verticalAlign": {
+                      "default": "top",
+                      "type": "string",
+                      "enum": [
+                        "top",
+                        "middle",
+                        "bottom"
+                      ]
+                    },
+                    "content": {
+                      "type": "object",
+                      "properties": {
+                        "type": {
+                          "type": "string",
+                          "const": "doc"
+                        },
+                        "content": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/$defs/__schema0"
+                          }
+                        }
+                      },
+                      "required": [
+                        "type"
+                      ],
+                      "additionalProperties": {},
+                      "description": "Rich text as editor JSON: paragraphs, lists, links and inline formatting"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "content"
+                  ],
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "image"
+                    },
+                    "x": {
+                      "type": "number",
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "y": {
+                      "type": "number",
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "w": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "h": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "src": {
+                      "type": "string",
+                      "pattern": "^media\\/[0-9a-f]{16}\\.(jpg|png|webp|gif)$"
+                    },
+                    "alt": {
+                      "default": "",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "src"
+                  ],
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "shape"
+                    },
+                    "x": {
+                      "type": "number",
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "y": {
+                      "type": "number",
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "w": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "h": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "shape": {
+                      "type": "string",
+                      "enum": [
+                        "rect",
+                        "round-rect",
+                        "ellipse",
+                        "triangle",
+                        "line",
+                        "arrow"
+                      ]
+                    },
+                    "fill": {
+                      "default": null,
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^#[0-9A-Fa-f]{6}$"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "background",
+                                "text",
+                                "heading",
+                                "accent1",
+                                "accent2",
+                                "accent3",
+                                "accent4",
+                                "accent5",
+                                "accent6"
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "A hex color like \"#1F7A8C\", a theme slot like \"accent1\", or null for none"
+                    },
+                    "stroke": {
+                      "default": null,
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "pattern": "^#[0-9A-Fa-f]{6}$"
+                            },
+                            {
+                              "type": "string",
+                              "enum": [
+                                "background",
+                                "text",
+                                "heading",
+                                "accent1",
+                                "accent2",
+                                "accent3",
+                                "accent4",
+                                "accent5",
+                                "accent6"
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "A hex color like \"#1F7A8C\", a theme slot like \"accent1\", or null for none"
+                    },
+                    "strokeWidth": {
+                      "default": 2,
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 50
+                    },
+                    "flipH": {
+                      "type": "boolean"
+                    },
+                    "flipV": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "shape"
+                  ],
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "table"
+                    },
+                    "x": {
+                      "type": "number",
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "y": {
+                      "type": "number",
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "w": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "h": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "headerRow": {
+                      "default": true,
+                      "type": "boolean"
+                    },
+                    "columnWidths": {
+                      "minItems": 1,
+                      "maxItems": 10,
+                      "type": "array",
+                      "items": {
+                        "type": "number",
+                        "minimum": 0
+                      }
+                    },
+                    "rows": {
+                      "minItems": 1,
+                      "maxItems": 20,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "cells": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "content": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "const": "doc"
+                                    },
+                                    "content": {
+                                      "type": "array",
+                                      "items": {
+                                        "$ref": "#/$defs/__schema0"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "type"
+                                  ],
+                                  "additionalProperties": {},
+                                  "description": "Rich text as editor JSON: paragraphs, lists, links and inline formatting"
+                                },
+                                "fill": {
+                                  "default": null,
+                                  "anyOf": [
+                                    {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "pattern": "^#[0-9A-Fa-f]{6}$"
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "background",
+                                            "text",
+                                            "heading",
+                                            "accent1",
+                                            "accent2",
+                                            "accent3",
+                                            "accent4",
+                                            "accent5",
+                                            "accent6"
+                                          ]
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ],
+                                  "description": "A hex color like \"#1F7A8C\", a theme slot like \"accent1\", or null for none"
+                                },
+                                "align": {
+                                  "default": "left",
+                                  "type": "string",
+                                  "enum": [
+                                    "left",
+                                    "center",
+                                    "right"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "content"
+                              ],
+                              "additionalProperties": {}
+                            }
+                          }
+                        },
+                        "required": [
+                          "cells"
+                        ],
+                        "additionalProperties": {}
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "columnWidths",
+                    "rows"
+                  ],
+                  "additionalProperties": {}
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "type": {
+                      "type": "string",
+                      "const": "chart"
+                    },
+                    "x": {
+                      "type": "number",
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "y": {
+                      "type": "number",
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "w": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "h": {
+                      "type": "number",
+                      "minimum": 0,
+                      "description": "Slide units (the slide is size.width by size.height)"
+                    },
+                    "chartType": {
+                      "type": "string",
+                      "enum": [
+                        "bar",
+                        "line",
+                        "pie"
+                      ]
+                    },
+                    "title": {
+                      "default": "",
+                      "type": "string"
+                    },
+                    "alt": {
+                      "default": "",
+                      "type": "string"
+                    },
+                    "categories": {
+                      "minItems": 1,
+                      "maxItems": 12,
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "series": {
+                      "minItems": 1,
+                      "maxItems": 6,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "values": {
+                            "type": "array",
+                            "items": {
+                              "type": [
+                                "number",
+                                "null"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "values"
+                        ],
+                        "additionalProperties": {}
+                      }
+                    },
+                    "options": {
+                      "default": {
+                        "legend": true,
+                        "xTitle": "",
+                        "yTitle": ""
+                      },
+                      "type": "object",
+                      "properties": {
+                        "legend": {
+                          "default": true,
+                          "type": "boolean"
+                        },
+                        "xTitle": {
+                          "default": "",
+                          "type": "string"
+                        },
+                        "yTitle": {
+                          "default": "",
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "type",
+                    "x",
+                    "y",
+                    "w",
+                    "h",
+                    "chartType",
+                    "categories",
+                    "series"
+                  ],
+                  "additionalProperties": {}
+                }
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "elements"
+        ],
+        "additionalProperties": {}
+      }
+    }
+  },
+  "required": [
+    "format",
+    "formatVersion",
+    "theme",
+    "slides"
+  ],
+  "additionalProperties": {},
+  "$defs": {
+    "__schema0": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "doc",
+            "paragraph",
+            "text",
+            "hardBreak",
+            "bulletList",
+            "orderedList",
+            "listItem"
+          ]
+        },
+        "text": {
+          "type": "string"
+        },
+        "attrs": {
+          "type": "object",
+          "propertyNames": {
+            "type": "string"
+          },
+          "additionalProperties": {
+            "type": [
+              "string",
+              "number",
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "marks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "bold",
+                  "italic",
+                  "underline",
+                  "strike",
+                  "textStyle",
+                  "highlight",
+                  "link"
+                ]
+              },
+              "attrs": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": [
+                    "string",
+                    "number",
+                    "boolean",
+                    "null"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "additionalProperties": {}
+          }
+        },
+        "content": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema0"
+          }
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": {}
+    }
+  }
+}

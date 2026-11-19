@@ -1,0 +1,598 @@
+import { offline } from '@mysuite/core/offline'
+import { ariaShortcut, shortcutLabel, tooltip } from '@mysuite/core/shortcuts'
+import { InstallButton, OfflineStatus, Popover, UpdateButton, useDialogs } from '@mysuite/core/ui'
+import { ChevronDown, LayoutGrid, Play } from 'lucide-react'
+import { pickImageFile } from '@mysuite/core/images'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { flushSync } from 'react-dom'
+import { Canvas } from './canvas/Canvas'
+import { CanvasController } from './canvas/controller'
+import { APP_VERSION } from './deck/defaults'
+import { DeckSession, type SessionState } from './deck/session'
+import { Presentation } from './present/presentation'
+import { PresenterView } from './present/PresenterView'
+import { PresentScreen } from './present/PresentScreen'
+import { loadDeckFonts } from './present/fonts'
+import { applyPrintCss, pageMode, printCss, settled } from './print/print'
+import { PrintDeck } from './print/PrintDeck'
+import { confirmSavePdf } from './print/save-pdf'
+import { SorterView } from './sorter/SorterView'
+import { ChartDialog } from './ui/ChartDialog'
+import { ArrangeMenu, FormatMenu, InsertMenu, SlideMenu } from './ui/Menus'
+import { NotesPane } from './ui/NotesPane'
+import { SlideStrip } from './ui/SlideStrip'
+import { editLinkDialog } from './ui/link'
+import { Toolbar } from './ui/Toolbar'
+
+const isTyping = (t: EventTarget | null) =>
+  t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'SELECT', 'TEXTAREA'].includes(t.tagName))
+
+export default function App() {
+  const [dialog, ask] = useDialogs()
+  const [session] = useState(() => new DeckSession(ask))
+  const [controller] = useState(() => new CanvasController(session))
+  const [presentation] = useState(() => new Presentation(session))
+  const mode = useSyncExternalStore(presentation.subscribe, presentation.getState)
+  const pendingPaste = useRef(false)
+  const state = useSyncExternalStore(session.subscribe, session.getState)
+  const ui = useSyncExternalStore(controller.subscribe, controller.getState)
+  // The sorter belongs to one deck: one put in place by New or Open starts in the editor.
+  const [sorterFor, setSorterFor] = useState<number | null>(null)
+  const view = sorterFor === state.generation ? 'sorter' : 'editor'
+
+  const openSorter = useCallback(() => {
+    controller.clearSelection()
+    setSorterFor(session.getState().generation)
+  }, [controller, session])
+  const closeSorter = useCallback(() => {
+    setSorterFor(null)
+    requestAnimationFrame(() => document.querySelector<HTMLElement>('.stage')?.focus())
+  }, [])
+
+  // Present from the start or from this slide; Presenter view opens the audience's window. All
+  // from a click or key press: full screen and a second window need one.
+  const present = useCallback(
+    (from: 'start' | 'here') => {
+      controller.finishEditing()
+      controller.endNotes()
+      const here = session.getState().deck.slides.indexOf(session.currentSlide())
+      presentation.present(from === 'start' ? 0 : Math.max(0, here))
+    },
+    [controller, session, presentation],
+  )
+  const presenterView = useCallback(() => {
+    controller.finishEditing()
+    controller.endNotes()
+    if (presentation.presenterView(0)) return
+    void ask({
+      title: 'The audience window was blocked',
+      body: 'The browser stopped MySlides from opening a second window. Allow pop-ups for this page (look for the blocked pop-up sign in the address bar), then choose Presenter view again.',
+      buttons: [{ label: 'OK', value: 'ok', primary: true }],
+      cancelValue: 'ok',
+    })
+  }, [controller, presentation, ask])
+  // ---- Save as PDF ------------------------------------------------------------------
+  // The pages exist only while printing. The print rules stay in the page, so the browser's own
+  // Print menu prints the deck right too.
+  const [printing, setPrinting] = useState(false)
+  const pages = pageMode()
+  const { width: slideW, height: slideH } = state.deck.size
+  useEffect(() => applyPrintCss(printCss(pages, slideW, slideH)), [pages, slideW, slideH])
+  useEffect(() => {
+    // Print from the browser's menu: the pages appear just in time (pictures may still be
+    // decoding then; Save as PDF waits for them).
+    const before = () => {
+      controller.finishEditing()
+      flushSync(() => setPrinting(true))
+    }
+    const after = () => setPrinting(false)
+    window.addEventListener('beforeprint', before)
+    window.addEventListener('afterprint', after)
+    return () => {
+      window.removeEventListener('beforeprint', before)
+      window.removeEventListener('afterprint', after)
+    }
+  }, [controller])
+  const savePdf = useCallback(async () => {
+    controller.finishEditing()
+    controller.endNotes()
+    if (!(await confirmSavePdf(ask, pages))) return
+    flushSync(() => setPrinting(true))
+    loadDeckFonts(session.getState().deck)
+    // Every picture decoded and every font loaded before the print window takes its snapshot.
+    await settled(document.querySelector('.print-deck') ?? document)
+    await new Promise((r) => requestAnimationFrame(() => r(null)))
+    window.print()
+  }, [controller, session, ask, pages])
+
+  // Back from presenting: the keyboard goes to the slide.
+  const presenting = mode.kind !== 'off'
+  const wasPresenting = useRef(false)
+  useEffect(() => {
+    if (wasPresenting.current && !presenting) {
+      requestAnimationFrame(() => document.querySelector<HTMLElement>('.stage, .grid-sorter [aria-current="true"]')?.focus())
+    }
+    wasPresenting.current = presenting
+  }, [presenting])
+
+  useEffect(() => {
+    session.start()
+    // A new version may apply by itself only while nothing has been done yet, and never
+    // mid-presentation (spec: nothing interrupts a running presentation).
+    offline.setIdleCheck(() => session.isPristine() && !presentation.running)
+    if (import.meta.env.VITE_E2E) {
+      window.__mySlides = session
+      window.__mySlidesCanvas = controller
+      window.__mySlidesPresent = presentation
+    }
+    return () => {
+      presentation.end()
+      session.dispose()
+    }
+  }, [session, controller, presentation])
+
+  // Pictures come from the Picture button, pasting, or dropping a file on the slide.
+  const addPicture = useCallback(
+    async (file: File, at?: { x: number; y: number }) => {
+      try {
+        await controller.insertPicture(file, at)
+      } catch {
+        await ask({
+          title: 'That file can’t be used as a picture',
+          body: 'Use a photo or picture file: JPEG, PNG, WebP or GIF.',
+          buttons: [{ label: 'OK', value: 'ok', primary: true }],
+          cancelValue: 'ok',
+        })
+      }
+    },
+    [controller, ask],
+  )
+  const pickPicture = useCallback(async () => {
+    const file = await pickImageFile()
+    if (file) await addPicture(file)
+  }, [addPicture])
+
+  // Paste: a picture on the clipboard becomes a picture on the slide; otherwise the app's own
+  // copied items are pasted (Ctrl+V on the canvas lets this event through for that reason).
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (presentation.running) return e.preventDefault()
+      // Some browsers list clipboard files under items rather than files.
+      const files = [
+        ...(e.clipboardData?.files ?? []),
+        ...[...(e.clipboardData?.items ?? [])].filter((i) => i.kind === 'file').map((i) => i.getAsFile()),
+      ]
+      const picture = files.find((f): f is File => !!f && f.type.startsWith('image/'))
+      if (picture) {
+        e.preventDefault()
+        void addPicture(picture)
+        return
+      }
+      if (isTyping(e.target)) return
+      e.preventDefault()
+      pendingPaste.current = false
+      controller.paste()
+    }
+    window.addEventListener('paste', onPaste)
+    return () => window.removeEventListener('paste', onPaste)
+  }, [controller, addPicture, presentation])
+
+  // A new deck opens with the cursor ready in the title (spec, UI). Only when a deck is put
+  // in place: undoing back to an empty deck must not grab the keyboard.
+  useEffect(() => {
+    if (!session.isPristine()) return
+    const title = session.getState().deck.slides[0].elements.find((e) => e.type === 'text' && e.role === 'title')
+    if (title) controller.startEditing(title.id)
+  }, [session, controller, state.generation])
+
+  // Installed app opened with a deck from the file manager (Chrome and Edge).
+  useEffect(() => {
+    const queue = (window as unknown as { launchQueue?: LaunchQueue }).launchQueue
+    queue?.setConsumer((params) => {
+      const handle = params.files[0]
+      if (!handle || handle.kind !== 'file') return
+      const openIt = () => void session.openLaunchedFile(handle as FileSystemFileHandle)
+      // Mid-presentation it waits: opening may ask about unsaved changes.
+      if (!presentation.running) return openIt()
+      const stop = presentation.subscribe(() => {
+        if (presentation.running) return
+        stop()
+        openIt()
+      })
+    })
+  }, [session, presentation])
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      // Presenting: the presentation has the keyboard.
+      if (presentation.running || document.querySelector('dialog[open]')) return
+      const mod = (e.ctrlKey || e.metaKey) && !e.altKey
+      const key = e.key.toLowerCase()
+      const { editingId, editor, selected } = controller.getState()
+
+      // F10: to the menu bar, keeping the selection (Tab goes on into the toolbar from there).
+      if (e.key === 'F10' && !mod && !e.altKey && !e.shiftKey) {
+        e.preventDefault()
+        document.querySelector<HTMLElement>('.menubar button')?.focus()
+        return
+      }
+      // F5 presents from the start, Shift+F5 from this slide (never the browser's reload).
+      if (e.key === 'F5' && !mod && !e.altKey) {
+        e.preventDefault()
+        present(e.shiftKey ? 'here' : 'start')
+        return
+      }
+
+      // Anywhere, even while typing.
+      if (mod && key === 's') {
+        e.preventDefault() // never the browser's "save this web page"
+        controller.finishEditing()
+        void (e.shiftKey ? session.saveAs() : session.save())
+        return
+      }
+      if (mod && !e.shiftKey && key === 'o') {
+        e.preventDefault()
+        controller.finishEditing()
+        void session.open()
+        return
+      }
+      // Ctrl+P: Save as PDF, with the note first (never the browser's print of the editor screen).
+      if (mod && !e.shiftKey && key === 'p') {
+        e.preventDefault()
+        void savePdf()
+        return
+      }
+      if (mod && !e.shiftKey && key === 'm') {
+        e.preventDefault()
+        controller.addSlide()
+        return
+      }
+      // The sorter handles its own keys.
+      if (view === 'sorter') {
+        if (mod && (key === 'z' || key === 'y') && !isTyping(e.target)) {
+          e.preventDefault()
+          if (key === 'y' || e.shiftKey) controller.redo()
+          else controller.undo()
+        }
+        return
+      }
+
+      // While a text box is being edited, keys belong to the editor (Ctrl+Z included).
+      if (editingId && editor && (e.target as HTMLElement | null)?.closest?.('.ProseMirror')) {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          controller.finishEditing()
+          document.querySelector<HTMLElement>('.stage')?.focus()
+        } else if (mod && !e.shiftKey && key === 'k') {
+          e.preventDefault()
+          void editLinkDialog(editor, ask)
+        }
+        return
+      }
+      // A box is being edited but its editor doesn't have the keyboard yet: the key goes in the box.
+      if (editingId && !mod && e.key.length === 1 && !isTyping(e.target) && controller.typeIntoEditing(e.key)) {
+        e.preventDefault()
+        return
+      }
+      // Undo and redo work from the strip and toolbar too (right after deleting a slide, say).
+      const inChrome = (e.target as HTMLElement | null)?.closest?.('.slide-strip, .chrome, .statusbar')
+      if (inChrome && !isTyping(e.target) && mod && (key === 'z' || key === 'y')) {
+        e.preventDefault()
+        if (key === 'y' || e.shiftKey) controller.redo()
+        else controller.undo()
+        return
+      }
+      // The keys below act on the slide, so only when the keyboard is on the slide (or nowhere in
+      // particular). Enter or Delete on a menu button, the strip or the notes is theirs.
+      const target = e.target as HTMLElement | null
+      const onSlide = !target || target === document.body || target === document.documentElement || !!target.closest?.('.stage')
+      if (isTyping(e.target) || !onSlide) return
+
+      const one = selected.length === 1 ? session.currentSlide().elements.find((x) => x.id === selected[0]) : undefined
+      const step = e.shiftKey ? 10 : 1
+      const arrows: Record<string, [number, number]> = {
+        ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step],
+      }
+      let handled = true
+      if (mod && !e.shiftKey && key === 'z') controller.undo()
+      else if (mod && (key === 'y' || (e.shiftKey && key === 'z'))) controller.redo()
+      else if (mod && key === 'a') controller.selectAll()
+      else if (mod && key === 'c') controller.copy()
+      else if (mod && key === 'x') controller.cut()
+      else if (mod && key === 'v') {
+        // Let the browser's paste event through: it may carry a picture (handled above). If it
+        // doesn't come (some browsers skip it with nothing to type into), paste our own items.
+        pendingPaste.current = true
+        setTimeout(() => {
+          if (pendingPaste.current) controller.paste()
+          pendingPaste.current = false
+        }, 50)
+        return
+      }
+      else if (mod && key === 'd') controller.duplicate()
+      else if (e.key === 'PageDown') controller.step(1)
+      else if (e.key === 'PageUp') controller.step(-1)
+      else if (!selected.length) handled = false
+      else if (e.key in arrows && !mod) controller.nudge(...arrows[e.key])
+      // Ctrl+Shift+arrows: resize (right and down grow, left and up shrink).
+      else if (e.key in arrows && mod && e.shiftKey) {
+        const [dx, dy] = arrows[e.key]
+        controller.resizeBy(Math.sign(dx) * 10, Math.sign(dy) * 10)
+      }
+      else if (e.key === 'Delete' || e.key === 'Backspace') controller.deleteSelected()
+      else if (e.key === 'Escape') controller.clearSelection()
+      else if ((e.key === 'Enter' || e.key === 'F2') && one?.type === 'text') controller.startEditing(one.id, 'end')
+      else if ((e.key === 'Enter' || e.key === 'F2') && one?.type === 'chart') controller.openChart(one.id)
+      else if ((e.key === 'Enter' || e.key === 'F2') && one?.type === 'table') controller.startEditing(one.id, 'start')
+      // Tab steps through the slide's items, then on out of the slide.
+      else if (e.key === 'Tab' && (e.target as HTMLElement | null)?.classList?.contains('stage')) handled = controller.cycle(e.shiftKey ? -1 : 1)
+      // Typing a letter on a selected text box starts editing it, with that letter.
+      else if (one?.type === 'text' && !mod && e.key.length === 1) controller.startEditing(one.id, { char: e.key })
+      else handled = false
+      // Nothing selected: Tab goes to the first item, Shift+Tab leaves the slide.
+      if (!handled && !selected.length && e.key === 'Tab' && (e.target as HTMLElement | null)?.classList?.contains('stage') && !e.shiftKey && !mod) {
+        handled = controller.cycle(1)
+      }
+      if (handled) e.preventDefault()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [session, controller, ask, view, presentation, present, savePdf])
+
+  const slide = session.currentSlide()
+  const index = state.deck.slides.indexOf(slide)
+  const deck = state.deck
+  return (
+    <>
+      {mode.kind === 'present' && (
+        <PresentScreen
+          deck={deck}
+          media={session.getMedia()}
+          show={mode.show}
+          onAction={(a) => presentation.act(a)}
+          onExit={() => presentation.end()}
+          onKey={(e) => {
+            if (e.key !== 'Escape') return false
+            presentation.end()
+            return true
+          }}
+        />
+      )}
+      {mode.kind === 'presenter' && (
+        <PresenterView
+          deck={deck}
+          media={session.getMedia()}
+          show={mode.show}
+          audienceReady={mode.audienceReady}
+          onAction={(a) => presentation.act(a)}
+          onEnd={() => presentation.end()}
+        />
+      )}
+    {/* While presenting, the editor stays as it was, out of sight. */}
+    <div className="app" style={presenting ? { display: 'none' } : undefined}>
+      <header className="chrome">
+        <div className="topbar">
+          <FileStatus state={state} />
+          <nav className="menubar" aria-label="Menus">
+            <FileMenu session={session} controller={controller} onSavePdf={() => void savePdf()} onAbout={() => void about(ask)} />
+            {view === 'editor' && (
+              <>
+                <InsertMenu controller={controller} ask={ask} onInsertPicture={() => void pickPicture()} />
+                <FormatMenu controller={controller} ask={ask} />
+                <ArrangeMenu controller={controller} ask={ask} />
+              </>
+            )}
+            <SlideMenu controller={controller} onSorter={view === 'sorter' ? closeSorter : openSorter} onPresentHere={() => present('here')} />
+          </nav>
+          <UpdateButton />
+          <InstallButton appName="MySlides" />
+          <PresentButton onPresent={present} onPresenterView={presenterView} />
+        </div>
+        {view === 'editor' && (
+          <Toolbar controller={controller} ask={ask} theme={state.deck.theme} onInsertPicture={() => void pickPicture()} />
+        )}
+      </header>
+      {view === 'sorter' ? (
+        <main className="slides-body sorter-body" aria-label="Slide sorter">
+          <SorterView controller={controller} onClose={closeSorter} />
+        </main>
+      ) : (
+        <div className="slides-body">
+          <SlideStrip controller={controller} />
+          <main className="editor-area" aria-label="Slide editor">
+            <Canvas
+              controller={controller}
+              slide={slide}
+              theme={state.deck.theme}
+              media={session.getMedia()}
+              size={state.deck.size}
+              onDropPicture={(file, at) => void addPicture(file, at)}
+            />
+            <NotesPane controller={controller} />
+          </main>
+        </div>
+      )}
+      <footer className="statusbar">
+        <span className="status-left">
+          MySlides · Slide {index + 1} of {state.deck.slides.length}
+          {ui.selected.length > 1 ? ` · ${ui.selected.length} selected` : ''}
+        </span>
+        <span className="status-right">
+          <button
+            type="button"
+            className="status-btn"
+            aria-pressed={view === 'sorter'}
+            title={view === 'sorter' ? 'Back to editor (Escape)' : 'Slide sorter: every slide at once'}
+            onClick={view === 'sorter' ? closeSorter : openSorter}
+          >
+            <LayoutGrid size={14} aria-hidden="true" /> Slide sorter
+          </button>
+          <OfflineStatus />
+        </span>
+      </footer>
+      {ui.chart && (
+        <ChartDialog
+          key={ui.chart.id ?? 'new'}
+          initial={controller.chartToEdit()}
+          isNew={!ui.chart.id}
+          theme={state.deck.theme}
+          onApply={(c) => {
+            controller.applyChart(c)
+            requestAnimationFrame(() => document.querySelector<HTMLElement>('.stage')?.focus())
+          }}
+          onCancel={() => {
+            controller.closeChart()
+            requestAnimationFrame(() => document.querySelector<HTMLElement>('.stage')?.focus())
+          }}
+        />
+      )}
+      {dialog}
+    </div>
+    {printing && <PrintDeck deck={deck} media={session.getMedia()} />}
+    </>
+  )
+}
+
+/** Present (from the start), with a menu for the other ways to present. Two clicks at most. */
+function PresentButton({ onPresent, onPresenterView }: { onPresent: (from: 'start' | 'here') => void; onPresenterView: () => void }) {
+  return (
+    <span className="present-split">
+      <button
+        type="button"
+        className="present-btn"
+        title={tooltip('Present from the beginning', 'F5')}
+        aria-keyshortcuts="F5"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => onPresent('start')}
+      >
+        <Play size={16} aria-hidden="true" /> Present
+      </button>
+      <Popover menu label="More ways to present" className="present-more" trigger={<ChevronDown size={16} aria-hidden="true" />}>
+        {(close) => (
+          <>
+            <Item label="Present from the beginning" shortcut="F5" onSelect={() => { close(); onPresent('start') }} />
+            <Item label="Present from this slide" shortcut="Shift+F5" onSelect={() => { close(); onPresent('here') }} />
+            <div className="menu-sep" role="separator" />
+            <Item label="Presenter view (notes on this screen)" onSelect={() => { close(); onPresenterView() }} />
+          </>
+        )}
+      </Popover>
+    </span>
+  )
+}
+
+/** File name, then whether it is saved, in plain words. */
+function FileStatus({ state }: { state: SessionState }) {
+  const status = state.dirty ? 'Unsaved changes' : state.hasFile ? 'Saved' : null
+  const hint = state.dirty ? `Backed up on this device. Press ${shortcutLabel('Mod+S')} to save to a file.` : undefined
+  return (
+    <div className="file-status">
+      {/* The deck's name is the page's main heading. */}
+      <h1 className="file-name">{state.fileName}</h1>
+      {/* Announced to screen readers when it changes. */}
+      <span className="file-state" role="status" aria-live="polite" title={hint}>
+        {state.notice ?? status}
+      </span>
+      {state.storageWarning && (
+        <span className="file-warning" role="alert">
+          {state.storageWarning}
+        </span>
+      )}
+    </div>
+  )
+}
+
+function Item({ label, shortcut, onSelect }: { label: string; shortcut?: string; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      className="menu-item"
+      role="menuitem"
+      title={tooltip(label, shortcut)}
+      aria-keyshortcuts={shortcut ? ariaShortcut(shortcut) : undefined}
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={onSelect}
+    >
+      <span className="menu-check" aria-hidden="true" />
+      <span className="menu-label">{label}</span>
+      {shortcut && (
+        <span className="menu-shortcut" aria-hidden="true">
+          {shortcutLabel(shortcut)}
+        </span>
+      )}
+    </button>
+  )
+}
+
+/** File, About MySlides: who makes it, its license, and the open-source software in it. */
+async function about(ask: ReturnType<typeof useDialogs>[1]) {
+  const a = await ask({
+    title: 'About MySlides',
+    body:
+      `MySlides ${APP_VERSION}: a free presentation app for school that works offline. Your decks stay on this device. ` +
+      '© 2026 Bright Logic LLC, under the PolyForm Noncommercial License 1.0.0. ' +
+      'MySlides is built with open-source software; every package and its license is listed in full under Third-party licenses.',
+    buttons: [
+      { label: 'Third-party licenses', value: 'licenses' },
+      { label: 'Close', value: 'close', primary: true },
+    ],
+    cancelValue: 'close',
+  })
+  if (a.value === 'licenses') window.open(`${import.meta.env.BASE_URL}THIRD_PARTY_LICENSES.md`, '_blank', 'noopener')
+}
+
+function FileMenu({ session, controller, onSavePdf, onAbout }: {
+  session: DeckSession
+  controller: CanvasController
+  onSavePdf: () => void
+  onAbout: () => void
+}) {
+  return (
+    <Popover
+      menu
+      label="File"
+      className="menubar-item"
+      trigger={
+        <>
+          File <ChevronDown size={14} aria-hidden="true" />
+        </>
+      }
+    >
+      {(close) => {
+        // Text being typed goes into the deck before any file action.
+        const pick = (fn: () => Promise<unknown>) => () => {
+          close()
+          controller.finishEditing()
+          void fn()
+        }
+        return (
+          <>
+            {/* Ctrl+N is reserved by the browser for a new window, so New has no shortcut. */}
+            <Item label="New" onSelect={pick(() => session.newDeck())} />
+            <Item label="Open…" shortcut="Mod+O" onSelect={pick(() => session.open())} />
+            <div className="menu-sep" role="separator" />
+            <Item label="Save" shortcut="Mod+S" onSelect={pick(() => session.save())} />
+            <Item label="Save as…" shortcut="Mod+Shift+S" onSelect={pick(() => session.saveAs())} />
+            <div className="menu-sep" role="separator" />
+            <Item
+              label="Save as PDF…"
+              shortcut="Mod+P"
+              onSelect={() => {
+                close()
+                onSavePdf()
+              }}
+            />
+            <div className="menu-sep" role="separator" />
+            <Item
+              label="About MySlides"
+              onSelect={() => {
+                close()
+                onAbout()
+              }}
+            />
+          </>
+        )
+      }}
+    </Popover>
+  )
+}
