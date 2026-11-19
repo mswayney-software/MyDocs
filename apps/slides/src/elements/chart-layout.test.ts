@@ -105,6 +105,16 @@ describe('charts render the hard cases without overlap or errors', () => {
   })
 })
 
+describe('labels are shortened only when they must be', () => {
+  it('legend names that fit stay whole, at any size', () => {
+    for (const [w, h] of [[1000, 480], [720, 440], [560, 440]]) {
+      const c = chart({ series: ['Group A', 'Group B', 'Group C'].map((name) => ({ name, values: [1, 2, 3] })) })
+      const texts = chartLayout(c, theme, w, h).marks.filter((m): m is TextMark => m.kind === 'text').map((t) => t.text)
+      expect(texts, `${w}×${h}`).toEqual(expect.arrayContaining(['Group A', 'Group B', 'Group C']))
+    }
+  })
+})
+
 describe('chart colors come from the theme', () => {
   it('series take the accents in order, and the chart follows a theme switch', () => {
     const fills = (t: Theme) => chartLayout(chart({ options: { legend: false, xTitle: '', yTitle: '' } }), t, 560, 440).marks.filter((m) => m.kind === 'rect').map((m) => (m as { fill: string }).fill)

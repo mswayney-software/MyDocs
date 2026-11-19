@@ -53,7 +53,8 @@ export const textWidth = (text: string, size: number) => text.length * size * GL
 
 /** `text` shortened with "…" to fit `max` units at `size`. */
 export function fit(text: string, size: number, max: number) {
-  if (textWidth(text, size) <= max) return text
+  // A hair of slack: a width worked out as "room minus swatch" can land a rounding error short.
+  if (textWidth(text, size) <= max + 0.01) return text
   const chars = Math.max(1, Math.floor(max / (size * GLYPH)) - 1)
   return text.slice(0, chars).trimEnd() + '…'
 }
