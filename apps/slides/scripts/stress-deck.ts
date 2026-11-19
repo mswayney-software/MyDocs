@@ -100,7 +100,7 @@ function slide(n: number, kind: ReturnType<typeof plan>[number], pictures: strin
     id: el('title'), type: 'text', role: 'title', ...box, verticalAlign: 'bottom', content: text(t),
   })
   const notes = `Slide ${n}. Remind the class what ${topic.toLowerCase()} has to do with last week.\nAsk one question before moving on.`
-  const base = { id, background: null, transition: n % 3 === 0 ? 'fade' : 'none', notes }
+  const base = { id, background: null, transition: n % 3 === 0 ? 'fade' : n % 3 === 1 && n > 1 ? 'slide' : 'none', notes }
 
   if (kind === 'title')
     return {
