@@ -295,6 +295,51 @@ test('Presenter view: closing the presenter’s window closes the audience’s',
   await closed
 })
 
+test('every way out of presenting leaves the deck unchanged and the editor working', async ({ page }) => {
+  await open(page)
+  await slides(page, 3)
+  await page.locator('.stage').focus()
+  const before = JSON.stringify(await deck(page))
+  const back = async (how: string) => {
+    await expect(page.locator('.present, .presenter'), how).toHaveCount(0)
+    await expect(page.locator('.app'), how).toBeVisible()
+    expect(JSON.stringify(await deck(page)), how).toBe(before)
+  }
+
+  // Present, ended with Esc.
+  await page.keyboard.press('F5')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('Escape')
+  await back('Esc')
+
+  // Present, ended by leaving full screen some other way (the browser's own control, say).
+  await page.getByRole('button', { name: 'Present', exact: true }).click()
+  await page.waitForFunction(() => !!document.fullscreenElement)
+  await page.keyboard.press('ArrowRight')
+  await page.evaluate(() => document.exitFullscreen())
+  await back('losing full screen')
+
+  // Presenter view, ended from each window.
+  for (const end of ['presenter', 'audience'] as const) {
+    await page.getByRole('button', { name: 'More ways to present' }).click()
+    const popup = page.waitForEvent('popup')
+    await page.getByRole('menuitem', { name: 'Presenter view (notes on this screen)' }).click()
+    const audience = await popup
+    await expect(audience.locator('.present-stage')).toHaveAttribute('data-shown', '0')
+    await audience.keyboard.press('ArrowRight')
+    if (end === 'presenter') await page.keyboard.press('Escape')
+    else await audience.close()
+    await back(`Presenter view closed from the ${end}'s window`)
+  }
+
+  // And the editor still takes keys: a new slide, then undo.
+  await page.locator('.stage').focus()
+  await page.keyboard.press('ControlOrMeta+m')
+  expect((await deck(page)).slides).toHaveLength(4)
+  await page.keyboard.press('ControlOrMeta+z')
+  expect(JSON.stringify(await deck(page))).toBe(before)
+})
+
 test('Presenter view: a blocked pop-up says what to do', async ({ page }) => {
   await open(page)
   await page.evaluate(() => (window.open = () => null))
